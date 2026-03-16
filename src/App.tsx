@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LoginPage from "./components/pages/Login";
-import PortfolioPage from "./components/pages/portfolio/Portfolio";
 import { DashboardLayout } from "./components/common/DashboardLayout";
-import JobPostPage from "./components/pages/jobPost/JobPost";
-import UserPage from "./components/pages/user/User";
-import CommunityPage from "./components/pages/community/Community";
-import PortfolioDetailPage from "./components/pages/portfolio/PortfolioDetail";
-import JobDetailPage from "./components/pages/jobPost/JobPostDetail";
-import CommunityDetailPage from "./components/pages/community/CommunityDetail";
+import LoginPage from "./components/pages/login/Login";
+import UserManagement from "./components/pages/user/UserManagement";
+import RecruiterManagement from "./components/pages/recruiter/RecruiterManagement";
+import CommunityPostManagement from "./components/pages/community/CommunityPostManagement";
+import JobPostManagement from "./components/pages/recruiter/JobPostManagement";
+import PortfolioManagement from "./components/pages/user/PortfolioManagement";
+import UserProfileManagement from "./components/pages/user/UserProfileManagement";
+import RecruiterProfileManagement from "./components/pages/recruiter/RecruiterProfileManagement";
 // import Members từ một file page khác bạn sẽ tạo
 
 function App() {
@@ -21,14 +21,14 @@ function App() {
         {/* Nhóm các route Dashboard sử dụng Layout chung */}
         <Route path="/dashboard" element={<DashboardLayout />}>
           {/* Khi vào /dashboard, sẽ tự động render PortfolioPage thông qua Outlet */}
-          <Route index element={<PortfolioPage />} />
-          <Route path="portfolio" element={<PortfolioPage />} />
-          <Route path="portfolio/:id" element={<PortfolioDetailPage />} />
-          <Route path="jobPost" element={<JobPostPage />} />
-          <Route path="job/:id" element={<JobDetailPage />} />
-          <Route path="community" element={<CommunityPage />} />
-          <Route path="community/:id" element={<CommunityDetailPage />} />
-          <Route path="user" element={<UserPage />} />
+          <Route index element={<UserManagement />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="users/:id" element={<UserProfileManagement />} />
+          <Route path="recruiters" element={<RecruiterManagement />} />
+          <Route path="recruiters/:id" element={<RecruiterProfileManagement />} />
+          <Route path="community-posts" element={<CommunityPostManagement />} />
+          <Route path="job-posts" element={<JobPostManagement />} />
+          <Route path="portfolios" element={<PortfolioManagement />} />
         </Route>
         <Route path="*" element={<div>404 Not Found</div>} />
       </Routes>
