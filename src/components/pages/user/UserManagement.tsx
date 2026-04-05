@@ -14,20 +14,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { allUsers } from "@/data/allUser";
-
-// --- Types ---
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  status: "Hoạt động" | "Bị khóa";
-  joinedDate: string;
-  avatarSeed: string;
-}
+import { allUsers, Employee } from "@/data/allUser";
 
 interface PaginationResponse {
-  data: User[];
+  data: Employee[];
   totalItems: number;
   totalPages: number;
 }
@@ -39,7 +29,6 @@ const fetchUsersFromBackend = async (
 ): Promise<PaginationResponse> => {
   // Giả lập delay mạng
   await new Promise((resolve) => setTimeout(resolve, 500));
-
 
   const start = (pageNum - 1) * pageSize;
   const data = allUsers.slice(start, start + pageSize);
@@ -53,7 +42,7 @@ const fetchUsersFromBackend = async (
 
 const UserManagement = () => {
   // --- States ---
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -167,17 +156,19 @@ const UserManagement = () => {
             ) : (
               users.map((user) => (
                 <tr
-                  key={user.id}
+                  key={user.userId}
                   className="hover:bg-slate-50/50 transition-colors group"
                 >
                   <td className="px-6 py-4 text-[13px] font-bold text-slate-400">
-                    {user.id}
+                    {user.userId}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xs border border-blue-100 uppercase">
-                        {user.name.split(" ").pop()?.substring(0, 2)}
-                      </div>
+                      <img
+                        src={user.avatar} // Thay đường dẫn ảnh của bạn vào đây
+                        alt={user.name}
+                        className="w-9 h-9 rounded-full bg-blue-50 object-cover border border-blue-100"
+                      />
                       <span className="text-[14px] font-bold text-slate-700">
                         {user.name}
                       </span>
@@ -199,7 +190,7 @@ const UserManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-[13px] font-bold text-slate-400">
-                    {user.joinedDate}
+                    {user.createdAt}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1">
@@ -207,7 +198,7 @@ const UserManagement = () => {
                         <Eye
                           size={18}
                           onClick={() =>
-                            navigate(`/dashboard/users/${user.id}`)
+                            navigate(`/dashboard/users/${user.userId}`)
                           }
                         />
                       </button>

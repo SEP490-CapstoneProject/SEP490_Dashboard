@@ -201,12 +201,27 @@ const CommunityTab = () => (
 );
 // --- Main Page Component ---
 const UserProfileManagement = () => {
-  const { id } = useParams(); // Lấy ID từ URL
+  const { id } = useParams();
+  const userId = id ? parseInt(id, 10) : 0;
   const navigate = useNavigate();
+
+  if (!id || isNaN(userId)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <p>Không tìm thấy ID người dùng hợp lệ!</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="text-blue-500 underline mt-4"
+        >
+          Quay lại
+        </button>
+      </div>
+    );
+  }
   const [activeTab, setActiveTab] = useState("Portfolio");
 
   // Tìm thông tin user dựa trên ID
-  const user = allUsers.find((u) => u.id === id);
+  const user = allUsers.find((u) => u.userId === userId);
 
   // Nếu không tìm thấy user (phòng trường hợp ID sai)
   if (!user) {
@@ -296,7 +311,6 @@ const UserProfileManagement = () => {
             {[
               { id: "Portfolio", icon: FolderKanban },
               { id: "Bài đăng cộng đồng", icon: MessageSquare },
-              { id: "Tin nhắn", icon: Mail },
             ].map((tab) => (
               <button
                 key={tab.id}

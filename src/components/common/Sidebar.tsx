@@ -11,7 +11,7 @@ const NAVIGATION = [
     title: "NGƯỜI DÙNG",
     items: [
       { icon: Users, label: "Người dùng cá nhân", path: "/dashboard/users" },
-      { icon: Building2, label: "Nhà tuyển dụng", path: "/dashboard/recruiters" },
+      { icon: Building2, label: "Nhà tuyển dụng", path: "/dashboard/companies" },
     ],
   },
   {

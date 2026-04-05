@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { allRecruiters } from "@/data/allRecruiters";
+import { allCompanies, Company } from "@/data/allCompaniess";
 import { useNavigate } from "react-router-dom";
 
 // --- Types ---
@@ -33,7 +33,7 @@ interface Recruiter {
 }
 
 interface PaginationResponse {
-  data: Recruiter[];
+  data: Company[];
   totalItems: number;
   totalPages: number;
 }
@@ -46,17 +46,17 @@ const fetchRecruitersFromBackend = async (
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   const start = (pageNum - 1) * pageSize;
-  const data = allRecruiters.slice(start, start + pageSize);
+  const data = allCompanies.slice(start, start + pageSize);
 
   return {
     data,
-    totalItems: allRecruiters.length,
-    totalPages: Math.ceil(allRecruiters.length / pageSize),
+    totalItems: allCompanies.length,
+    totalPages: Math.ceil(allCompanies.length / pageSize),
   };
 };
 
-const RecruiterManagement = () => {
-  const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
+const CompanyManagement = () => {
+  const [recruiters, setRecruiters] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -187,26 +187,26 @@ const RecruiterManagement = () => {
             ) : (
               recruiters.map((item) => (
                 <tr
-                  key={item.id}
+                  key={item.companyId}
                   className="hover:bg-slate-50/50 transition-colors group"
                 >
                   <td className="px-6 py-4 text-[13px] font-bold text-slate-400">
-                    {item.id}
+                    {item.companyId}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white shrink-0 shadow-inner overflow-hidden uppercase font-black text-[10px]">
+                      <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white shrink-0 shadow-inner overflow-hidden uppercase font-black text-[10px]">
                         <img
-                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${item.logoSeed}`}
+                          src={item.avatar}
                           alt="logo"
                         />
                       </div>
                       <div>
                         <p className="text-[14px] font-black text-slate-700 leading-tight">
-                          {item.name}
+                          {item.companyName}
                         </p>
                         <p className="text-[11px] text-slate-400 font-bold mt-1 flex items-center gap-1 uppercase">
-                          <MapPin size={10} /> {item.location}
+                          <MapPin size={10} /> {item.address}
                         </p>
                       </div>
                     </div>
@@ -216,7 +216,7 @@ const RecruiterManagement = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                      {item.industry}
+                      {item.activityField}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -254,13 +254,13 @@ const RecruiterManagement = () => {
                             <X size={18} />
                           </button>
                           <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all cursor-pointer">
-                            <Eye size={18} onClick={() => navigate(`/dashboard/recruiters/${item.id}`)} />
+                            <Eye size={18} onClick={() => navigate(`/dashboard/companies/${item.companyId}`)} />
                           </button>
                         </>
                       ) : (
                         <>
                           <button className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer">
-                            <Eye size={18} onClick={() => navigate(`/dashboard/recruiters/${item.id}`)} />
+                            <Eye size={18} onClick={() => navigate(`/dashboard/companies/${item.companyId}`)} />
                           </button>
                           <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer">
                             <Ban size={18} />
@@ -377,4 +377,4 @@ const FilterButton = ({ label }: { label: string }) => (
   </button>
 );
 
-export default RecruiterManagement;
+export default CompanyManagement;

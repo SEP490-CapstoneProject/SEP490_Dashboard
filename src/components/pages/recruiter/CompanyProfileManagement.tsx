@@ -20,10 +20,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  allRecruiters,
-  getRecruiterById,
-  Recruiter,
-} from "@/data/allRecruiters";
+  allCompanies
+} from "@/data/allCompaniess";
 const MOCK_POSTS = [
   {
     id: "p1",
@@ -202,13 +200,31 @@ const JobPostsTab = () => {
   );
 };
 
-const RecruiterProfileManagement = () => {
+const CompanyProfileManagement = () => {
   const [activeTab, setActiveTab] = useState("Bài đăng tuyển dụng");
 
-  const { id } = useParams(); // Lấy ID từ URL
+  const { id } = useParams();
+  const companyId = id ? parseInt(id, 10) : 0;
   const navigate = useNavigate();
-  const recruiter = allRecruiters.find((u) => u.id === id);
-  if (!recruiter) {
+
+  if (!id || isNaN(companyId)){
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#f8fafd]">
+        <p className="text-slate-400 font-bold mb-4">
+          Không tìm thấy ID nhà tuyển dụng!
+        </p>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-blue-600 font-black text-sm uppercase"
+        >
+          <ArrowLeft size={16} /> Quay lại danh sách
+        </button>
+      </div>
+    );
+  }
+
+  const company = allCompanies.find((u) => u.userId === companyId);
+  if (!company) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#f8fafd]">
         <p className="text-slate-400 font-bold mb-4">
@@ -239,7 +255,7 @@ const RecruiterProfileManagement = () => {
           {/* Banner động theo recruiter.bannerUrl */}
           <div
             className="h-48 bg-cover bg-center transition-all duration-700"
-            style={{ backgroundImage: `url(${recruiter.bannerUrl})` }}
+            style={{ backgroundImage: `url(${company.coverImage})` }}
           />
 
           <div className="px-10 pb-8 relative">
@@ -248,7 +264,7 @@ const RecruiterProfileManagement = () => {
               <div className="relative -mt-12 shrink-0">
                 <div className="w-32 h-32 rounded-2xl bg-slate-900 border-[6px] border-white shadow-xl flex items-center justify-center p-4">
                   <img
-                    src={`https://api.dicebear.com/7.x/initials/svg?seed=${recruiter.logoSeed}`}
+                    src={company.avatar}
                     alt="logo"
                     className="w-full h-full object-contain rounded-lg"
                   />
@@ -260,21 +276,21 @@ const RecruiterProfileManagement = () => {
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
                     <h2 className="text-2xl font-black text-slate-800 tracking-tight uppercase">
-                      {recruiter.name}
+                      {company.companyName}
                     </h2>
                     <span
                       className={cn(
                         "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm",
-                        recruiter.status === "Hoạt động"
+                        company.status === "Hoạt động"
                           ? "bg-emerald-50 text-emerald-500"
                           : "bg-orange-50 text-orange-500",
                       )}
                     >
-                      {recruiter.status}
+                      {company.status}
                     </span>
                   </div>
                   <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-2xl">
-                    {recruiter.description}
+                    {company.description}
                   </p>
                 </div>
                 <button className="flex items-center gap-2 px-6 py-2.5 bg-red-50 text-red-500 rounded-xl text-[13px] font-black hover:bg-red-100 transition-all border border-red-100 cursor-pointer">
@@ -287,22 +303,22 @@ const RecruiterProfileManagement = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-10 pt-8 border-t border-slate-50">
               <DetailBlock
                 label="Lĩnh vực"
-                value={recruiter.industry}
+                value={company.activityField}
                 icon={Globe}
               />
               <DetailBlock
                 label="Địa chỉ"
-                value={recruiter.location}
+                value={company.address}
                 icon={MapPin}
               />
               <DetailBlock
                 label="Mã số thuế"
-                value={recruiter.taxId}
+                value={company.taxIdentification}
                 icon={Hash}
               />
               <DetailBlock
                 label="Email liên hệ"
-                value={recruiter.email}
+                value={company.email}
                 icon={Mail}
               />
             </div>
@@ -386,4 +402,4 @@ const DetailBlock = ({ label, value, icon: Icon }: DetailBlockProps) => (
   </div>
 );
 
-export default RecruiterProfileManagement;
+export default CompanyProfileManagement;

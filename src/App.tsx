@@ -2,12 +2,14 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "./components/common/DashboardLayout";
 import LoginPage from "./components/pages/login/Login";
 import UserManagement from "./components/pages/user/UserManagement";
-import RecruiterManagement from "./components/pages/recruiter/RecruiterManagement";
+import RecruiterManagement from "./components/pages/recruiter/CompanyManagement";
 import CommunityPostManagement from "./components/pages/community/CommunityPostManagement";
 import JobPostManagement from "./components/pages/recruiter/JobPostManagement";
 import PortfolioManagement from "./components/pages/user/PortfolioManagement";
 import UserProfileManagement from "./components/pages/user/UserProfileManagement";
-import RecruiterProfileManagement from "./components/pages/recruiter/RecruiterProfileManagement";
+import RecruiterProfileManagement from "./components/pages/recruiter/CompanyProfileManagement";
+import CompanyManagement from "./components/pages/recruiter/CompanyManagement";
+import CompanyProfileManagement from "./components/pages/recruiter/CompanyProfileManagement";
 // import Members từ một file page khác bạn sẽ tạo
 
 function App() {
@@ -24,8 +26,8 @@ function App() {
           <Route index element={<UserManagement />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="users/:id" element={<UserProfileManagement />} />
-          <Route path="recruiters" element={<RecruiterManagement />} />
-          <Route path="recruiters/:id" element={<RecruiterProfileManagement />} />
+          <Route path="companies" element={<CompanyManagement />} />
+          <Route path="companies/:id" element={<CompanyProfileManagement />} />
           <Route path="community-posts" element={<CommunityPostManagement />} />
           <Route path="job-posts" element={<JobPostManagement />} />
           <Route path="portfolios" element={<PortfolioManagement />} />
