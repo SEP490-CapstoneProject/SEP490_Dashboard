@@ -6,138 +6,155 @@ import {
   ChevronRight,
   AlertCircle,
   Flag,
+  Loader2,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// --- Types ---
-interface CommunityPost {
-  id: string;
-  author: string;
-  content: string;
-  reason: string;
-  status: "Bị tố cáo" | "Vi phạm";
-  avatarColor: string;
-}
-
-interface PaginationResponse {
-  data: CommunityPost[];
-  totalItems: number;
-  totalPages: number;
-}
-
-// --- Mock Data Backend (Giả lập fetch có Filter & Paging) ---
-const fetchPostsFromBackend = async (
-  pageNum: number,
-  pageSize: number,
-  filterTab: string
-): Promise<PaginationResponse> => {
-  await new Promise((resolve) => setTimeout(resolve, 400));
-
-  const ALL_MOCK_DATA: CommunityPost[] = [
-    { id: "1", author: "Nguyễn Văn A", content: "Chia sẻ lộ trình học React...", reason: "Spam quảng cáo", status: "Bị tố cáo", avatarColor: "bg-blue-100 text-blue-600" },
-    { id: "2", author: "Trần Thị B", content: "Cần tìm đối tác làm dự án...", reason: "Nội dung nhạy cảm", status: "Vi phạm", avatarColor: "bg-slate-100 text-slate-600" },
-    { id: "3", author: "Lê Văn C", content: "Dịch vụ tăng follow, like, vi...", reason: "Quảng cáo trái phép", status: "Bị tố cáo", avatarColor: "bg-blue-100 text-blue-600" },
-    { id: "4", author: "Dương Hoàng", content: "Cách tối ưu SEO cho websi...", reason: "Tố cáo giả mạo", status: "Bị tố cáo", avatarColor: "bg-purple-100 text-purple-600" },
-    { id: "5", author: "Phạm Minh Mẫn", content: "Cảnh báo lừa đảo tuyển dụng...", reason: "Nội dung sai lệch", status: "Vi phạm", avatarColor: "bg-red-100 text-red-600" },
-  ];
-
-  // Logic Filter tại Backend
-  let filtered = ALL_MOCK_DATA;
-  if (filterTab !== "Tất cả bài đăng") {
-    filtered = ALL_MOCK_DATA.filter((post) => post.status === filterTab);
-  }
-
-  // Logic Paging tại Backend
-  const start = (pageNum - 1) * pageSize;
-  const data = filtered.slice(start, start + pageSize);
-
-  return {
-    data,
-    totalItems: filtered.length,
-    totalPages: Math.ceil(filtered.length / pageSize),
-  };
-};
+import { useAppSelector } from "@/store/hook";
+import { CommunityPost } from "@/types/community";
+import { useNavigate } from "react-router-dom";
+import { formatTimeAgo } from "@/utils/FormatTime";
 
 const CommunityPostManagement = () => {
+  const { accessToken } = useAppSelector((state) => state.auth);
+
   // --- States ---
   const [activeTab, setActiveTab] = useState("Tất cả bài đăng");
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const pageSize = 4;
+  const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
 
-  // --- Effect: Load data khi Page hoặc Tab thay đổi ---
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const res = await fetchPostsFromBackend(currentPage, pageSize, activeTab);
-      setPosts(res.data);
-      setTotalItems(res.totalItems);
-      setTotalPages(res.totalPages);
+  // Cursor Paging States
+  const [currentCursor, setCurrentCursor] = useState<number | null>(null);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [cursorStack, setCursorStack] = useState<(number | null)[]>([]); // Lưu vết để Back trang
+
+  const pageSize = 5;
+
+  // --- Core Fetch Logic ---
+  const loadData = async (targetCursor: number | null) => {
+    setLoading(true);
+    try {
+      const url = new URL(
+        "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts",
+      );
+      url.searchParams.append("pageSize", pageSize.toString());
+      if (targetCursor) {
+        url.searchParams.append("cursor", targetCursor.toString());
+      }
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const res = await response.json();
+        // Giả sử API trả về mảng items và nextCursor
+        // Nếu API trả về mảng thô, cursor thường là ID của item cuối cùng
+        const items = res.items || res;
+        setPosts(items);
+
+        // Cập nhật Cursor tiếp theo (lấy ID của bài đăng cuối cùng trong danh sách)
+        if (items.length === pageSize) {
+          setNextCursor(items[items.length - 1].id);
+        } else {
+          setNextCursor(null);
+        }
+
+        setCurrentCursor(targetCursor);
+      }
+    } catch (error) {
+      console.error("Lỗi fetch data:", error);
+    } finally {
       setLoading(false);
-    };
-    loadData();
-  }, [currentPage, activeTab]);
-
-  // Reset về trang 1 khi chuyển Tab
-  const handleTabChange = (tabName: string) => {
-    setActiveTab(tabName);
-    setCurrentPage(1);
+    }
   };
 
+  // Reset khi đổi Tab
+  useEffect(() => {
+    setCursorStack([]);
+    loadData(null);
+  }, [activeTab]);
+
+  // --- Navigation Handlers ---
+  const handleNext = () => {
+    if (nextCursor && !loading) {
+      setCursorStack((prev) => [...prev, currentCursor]); // Đẩy cursor hiện tại vào stack
+      loadData(nextCursor);
+    }
+  };
+
+  const handleBack = () => {
+    if (cursorStack.length > 0 && !loading) {
+      const prevCursor = cursorStack[cursorStack.length - 1];
+      setCursorStack((prev) => prev.slice(0, -1)); // Xóa cursor cuối khỏi stack
+      loadData(prevCursor);
+    }
+  };
+  const handleViewDetail = (postId: number) => {
+    navigate(`/dashboard/community-posts/${postId}`);
+  };
+  const filteredPosts = posts.filter((post) =>
+    post.author.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
   return (
-    <div className="flex-1 min-h-screen bg-[#f8fafd] p-4 animate-in fade-in duration-500">
-      {/* 1. Header Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {/* Card: Tổng số */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm border-2 border-white flex flex-col justify-between h-40">
-          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Tổng số bài đăng</p>
-          <h3 className="text-3xl font-black text-slate-800">12,840</h3>
-          <p className="text-[10px] font-bold text-blue-500 tracking-wider">+1 bài đăng hôm nay</p>
-        </div>
-
-        {/* Card: Vi phạm */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm border-2 border-white flex flex-col justify-between h-40 group">
-          <div className="flex justify-between items-start">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Vi phạm</p>
-            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center"><AlertCircle size={20} /></div>
-          </div>
-          <h3 className="text-3xl font-black text-red-500 leading-none">12</h3>
-          <p className="text-[10px] font-bold mt-2 text-red-400 flex items-center gap-1">+ 2 vi phạm hôm nay</p>
-        </div>
-
-        {/* Card: Bị tố cáo */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm border-2 border-white flex flex-col justify-between h-40 group hover:shadow-md transition-all">
-          <div className="flex justify-between items-start">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Bị tố cáo</p>
-            <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-amber-50 group-hover:text-amber-500 transition-colors"><Flag size={20} /></div>
-          </div>
-          <h3 className="text-3xl font-black text-slate-800 leading-none">08</h3>
-          <p className="text-[10px] font-bold mt-2 text-slate-400 tracking-wider">+1 tố cáo hôm nay</p>
-        </div>
+    <div className="flex-1 min-h-screen bg-[#f7eccd] p-2 animate-in fade-in duration-500">
+      {/* 1. Header Stats (Giữ nguyên giao diện của bạn) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+        <StatCard
+          label="Tổng bài đăng"
+          value="12,840"
+          color="blue"
+          icon={Flag}
+        />
+        <StatCard
+          label="Vi phạm"
+          value="12"
+          color="red"
+          icon={AlertCircle}
+          isAlert
+        />
+        <StatCard label="Bị tố cáo" value="08" color="amber" icon={Flag} />
       </div>
 
       {/* 2. Main Content Card */}
-      <div className="bg-white border-2 border-white shadow-sm rounded-[2.5rem] overflow-hidden">
+      <div className="bg-white border-2 border-white shadow-sm rounded-[1rem] overflow-hidden">
         {/* Tab Switcher */}
-        <div className="flex border-b border-slate-50 px-8">
-          {["Tất cả bài đăng", "Bị tố cáo", "Vi phạm"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              className={cn(
-                "py-5 px-6 text-[13px] font-bold transition-all relative",
-                activeTab === tab ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
-              )}
-            >
-              {tab}
-              {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 animate-in slide-in-from-left-2" />
-              )}
-            </button>
-          ))}
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-50 px-8 py-2 gap-4">
+          <div className="flex">
+            {["Tất cả", "Bị tố cáo", "Vi phạm"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "py-5 px-6 text-[13px] font-bold transition-all relative cursor-pointer",
+                  activeTab === tab
+                    ? "text-blue-600"
+                    : "text-slate-400 hover:text-slate-600",
+                )}
+              >
+                {tab}
+                {activeTab === tab && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tên tác giả..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+          </div>
         </div>
 
         {/* Table Area */}
@@ -145,83 +162,116 @@ const CommunityPostManagement = () => {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/30">
-                {["TÁC GIẢ", "NỘI DUNG", "LÝ DO", "TRẠNG THÁI", "HÀNH ĐỘNG"].map((h) => (
-                  <th key={h} className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                {[
+                  "TÁC GIẢ",
+                  "NỘI DUNG",
+                  "NGÀY TẠO",
+                  "TRẠNG THÁI",
+                  "HÀNH ĐỘNG",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                  >
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-bold italic uppercase text-xs">Đang tải dữ liệu...</td></tr>
-              ) : posts.length > 0 ? (
-                posts.map((post) => (
-                  <tr key={post.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr>
+                  <td colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Loader2 className="animate-spin" />
+                      <span className="text-xs font-bold uppercase">
+                        Đang tải dữ liệu...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredPosts.length > 0 ? (
+                filteredPosts.map((post) => (
+                  <tr
+                    key={post.id}
+                    className="hover:bg-slate-50/50 transition-colors group"
+                  >
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-3">
-                        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-black text-[11px] uppercase", post.avatarColor)}>
-                          {post.author.split(" ").map((n) => n[0]).join("").slice(-2)}
+                        <img
+                          src={post.author.avatar}
+                          alt="avatar"
+                          className="w-9 h-9 rounded-xl object-cover border border-slate-100"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-[14px] font-bold text-slate-700">
+                            {post.author.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">
+                            {post.author.role}
+                          </span>
                         </div>
-                        <span className="text-[14px] font-bold text-slate-700">{post.author}</span>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-[13px] text-slate-500 font-medium">{post.content}</td>
+                    <td className="px-8 py-5 text-[13px] text-slate-500 font-medium max-w-md">
+                      <p className="line-clamp-2">{post.description}</p>
+                    </td>
+                    <td className="px-8 py-5 text-[12px] font-bold text-slate-400">
+                      {formatTimeAgo(post.createdAt)}
+                    </td>
                     <td className="px-8 py-5">
-                      <span className={cn("px-4 py-1.5 rounded-full text-[11px] font-bold", post.status === "Vi phạm" ? "bg-red-50 text-red-500" : "bg-amber-50 text-amber-600")}>
-                        {post.reason}
+                      <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-500 uppercase">
+                        Hoạt động
                       </span>
                     </td>
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-2">
-                        <div className={cn("w-1.5 h-1.5 rounded-full", post.status === "Vi phạm" ? "bg-red-500" : "bg-amber-500")} />
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">{post.status}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-2">
-                        <button className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><Eye size={18} /></button>
-                        <button className={cn("p-2 rounded-lg transition-all", post.status === "Vi phạm" ? "text-red-500 bg-red-50" : "text-slate-400 hover:text-red-500 hover:bg-red-50")}><Ban size={18} /></button>
+                        <button
+                          className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                          onClick={() => handleViewDetail(post.id)}
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer">
+                          <Ban size={18} />
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium">Không có dữ liệu hiển thị.</td></tr>
+                <tr>
+                  <td colSpan={5} className="py-20 text-center text-slate-400">
+                    Không có dữ liệu hiển thị.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination (Backend Style) */}
-        <div className="px-8 py-6 bg-slate-50/20 flex justify-between items-center border-t border-slate-50">
+        {/* Cursor-Based Pagination UI */}
+        <div className="px-6 py-5 bg-slate-50/20 flex justify-between items-center border-t border-slate-50">
           <p className="text-[12px] text-slate-400 font-medium">
-            Hiển thị <span className="text-slate-700 font-bold">{(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalItems)}</span> trên tổng số <span className="text-slate-700 font-bold">{totalItems}</span> bài đăng
+            Trang hiện tại:{" "}
+            <span className="text-slate-700 font-bold">
+              {cursorStack.length + 1}
+            </span>
           </p>
-          <div className="flex items-center gap-1.5">
-            <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-2 text-slate-300 hover:text-slate-600 disabled:opacity-20"
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleBack}
+              disabled={cursorStack.length === 0 || loading}
+              className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-20 transition-all"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} /> Trang trước
             </button>
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => setCurrentPage(i + 1)}
-                className={cn(
-                  "w-8 h-8 rounded-lg text-[12px] font-black transition-all",
-                  currentPage === i + 1 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-slate-400 hover:bg-white"
-                )}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 text-slate-300 hover:text-slate-600 disabled:opacity-20"
+            <button
+              onClick={handleNext}
+              disabled={!nextCursor || loading}
+              className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:bg-slate-200 shadow-md shadow-blue-500/10 transition-all"
             >
-              <ChevronRight size={18} />
+              Trang sau <ChevronRight size={16} />
             </button>
           </div>
         </div>
@@ -229,5 +279,42 @@ const CommunityPostManagement = () => {
     </div>
   );
 };
+
+// Helper StatCard Component
+const StatCard = ({ label, value, color, icon: Icon, isAlert }: any) => (
+  <div className="bg-white p-4 rounded-[1.5rem] shadow-sm border-2 border-white flex flex-col justify-between h-30">
+    <div className="flex justify-between items-start">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+        {label}
+      </p>
+      <div
+        className={cn(
+          "w-10 h-10 rounded-xl flex items-center justify-center",
+          color === "red"
+            ? "bg-red-50 text-red-500"
+            : "bg-slate-50 text-slate-400",
+        )}
+      >
+        <Icon size={20} />
+      </div>
+    </div>
+    <h3
+      className={cn(
+        "text-2xl font-black",
+        color === "red" ? "text-red-500" : "text-slate-800",
+      )}
+    >
+      {value}
+    </h3>
+    <p
+      className={cn(
+        "text-[10px] font-bold",
+        color === "red" ? "text-red-400" : "text-blue-500",
+      )}
+    >
+      {isAlert ? "Cần xử lý ngay" : "+1 bài đăng mới"}
+    </p>
+  </div>
+);
 
 export default CommunityPostManagement;

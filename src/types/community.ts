@@ -20,3 +20,32 @@ export interface CommunityPost {
   isSaved: boolean;
   createdAt: string;
 }
+export interface ReplyComment {
+  id: number;
+  author: {
+    id: number;
+    name: string;
+    avatar: string;
+    role: string;
+  };
+  replyToUser: {
+    id: number;
+    name: string;
+    avatar: string;
+    role: string;
+  };
+  content: string;
+  createdAt: string;
+}
+export interface PostComment {
+  id: number;
+  author: {
+    id: number;
+    name: string;
+    avatar: string;
+    role: string;
+  };
+  content: string;
+  createdAt: string;
+  replies: ReplyComment[];
+}

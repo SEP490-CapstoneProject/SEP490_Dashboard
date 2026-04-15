@@ -11,7 +11,7 @@ export const CommunityTab = ({ userId }: { userId: number }) => {
     const fetchUserCommunityPosts = async () => {
       setLoading(true); // Bắt đầu load
       try {
-        const response = await fetch(`https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io//api/community/posts/user/${userId}`);
+        const response = await fetch(`https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts/user/${userId}`);
         if (response.ok) {
           const data = await response.json();
           setPosts(data);

@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Users as UsersIcon,
   UserCheck,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -19,8 +20,8 @@ import { CreateUserModal } from "./CreateUserModal";
 
 const statusOptions = [
   { label: "Tất cả trạng thái", value: "All" },
-  { label: "Active", value: "Active" },
-  { label: "Locked", value: "Locked" },
+  { label: "Hoạt động", value: "Active" },
+  { label: "Bị khóa", value: "Locked" },
 ];
 
 const sortOptions = [
@@ -184,7 +185,7 @@ const UserManagement = () => {
               <tr>
                 {[
                   "ID",
-                  "NGƯỜI DÙNG",
+                  "Ứng viên",
                   "EMAIL",
                   "TRẠNG THÁI",
                   "NGÀY THAM GIA",
@@ -202,11 +203,13 @@ const UserManagement = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="text-center py-20 text-slate-400 font-medium"
-                  >
-                    Đang tải dữ liệu...
+                  <td colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Loader2 className="animate-spin" />
+                      <span className="text-xs font-bold uppercase">
+                        Đang tải dữ liệu...
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ) : usersToDisplay.length > 0 ? (
@@ -365,7 +368,7 @@ const StatCard = ({ label, value, trend, icon: Icon, color }: any) => (
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
         {label}
       </p>
-      <h3 className="text-2xl font-black text-slate-800">{value}</h3> 
+      <h3 className="text-2xl font-black text-slate-800">{value}</h3>
       <p
         className={cn(
           "text-[10px] font-bold mt-1",

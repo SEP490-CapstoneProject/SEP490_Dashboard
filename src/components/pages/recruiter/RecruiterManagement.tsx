@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   MapPin,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -57,6 +58,7 @@ const RecruiterManagement = () => {
         "https://userprofile-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Company",
       );
       const data = await response.json();
+      console.log("company", data);
       setAllRecruiters(data);
     } catch (error) {
       console.error("Lỗi tải dữ liệu nhà tuyển dụng:", error);
@@ -200,7 +202,7 @@ const RecruiterManagement = () => {
               <tr>
                 {[
                   "ID",
-                  "DOANH NGHIỆP",
+                  "Nhà tuyển dụng",
                   "EMAIL",
                   "LĨNH VỰC",
                   "TRẠNG THÁI",
@@ -218,11 +220,13 @@ const RecruiterManagement = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="text-center py-20 text-slate-400 font-medium"
-                  >
-                    Đang tải dữ liệu...
+                  <td colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Loader2 className="animate-spin" />
+                      <span className="text-xs font-bold uppercase">
+                        Đang tải dữ liệu...
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ) : recruitersToDisplay.length > 0 ? (

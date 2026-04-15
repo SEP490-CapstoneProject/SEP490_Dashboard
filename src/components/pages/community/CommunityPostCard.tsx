@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Heart,
   MessageCircle,
@@ -6,12 +6,12 @@ import {
   Reply,
   MoreHorizontal,
   Trash2,
-  Flag,
 } from "lucide-react";
 import { formatTimeAgo } from "@/utils/FormatTime";
 import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "@/store/hook";
 import { notify } from "@/lib/toast";
+import { ConfirmDeleteModal } from "../user/ConfirmDeleteModal";
 
 interface PostProps {
   id: number;
@@ -33,7 +33,6 @@ interface PostProps {
 export const CommunityPostCard: React.FC<PostProps> = ({
   id,
   author,
-  authorId,
   time,
   avatar,
   isVerified,
@@ -42,8 +41,7 @@ export const CommunityPostCard: React.FC<PostProps> = ({
   likes,
   comments,
   isFavorited: initialIsFavorited,
-  isSaved: initialIsSaved,
-  onDeletePost,
+  isSaved: initialIsSaved
 }) => {
   // Hàm render layout hình ảnh dựa trên số lượng
   const renderImages = () => {
@@ -128,7 +126,10 @@ export const CommunityPostCard: React.FC<PostProps> = ({
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, accessToken } = useAppSelector((state) => state.auth);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { accessToken } = useAppSelector((state) => state.auth);
+  const navigate = useNavigate();
   // Xử lý click outside để đóng menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -143,7 +144,6 @@ export const CommunityPostCard: React.FC<PostProps> = ({
     return () =>
       document.body.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  const isMyPost = user?.id === authorId;
   const handleFavoriteAction = async () => {
     try {
       const response = await fetch(
@@ -253,6 +253,27 @@ export const CommunityPostCard: React.FC<PostProps> = ({
 
     setIsActionLoading(false);
   };
+  const handleDeleteUser = async (postId: number) => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts/${postId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+
+      if (response.ok) {
+        notify.success("Xóa bài viết thành công");
+        navigate("/dashboard/community-posts");
+      }
+    } catch (error) {
+      notify.error("Không thể xóa bài viết");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   return (
     <article className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
       <div className="p-4">
@@ -293,7 +314,7 @@ export const CommunityPostCard: React.FC<PostProps> = ({
               <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-[60] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                 <div className="py-1">
                   {/* Option 1: Luôn hiển thị */}
-                  <button
+                  {/* <button
                     onClick={() => {
                       notify.info("Đã gửi báo cáo bài viết");
                       setShowDropdown(false);
@@ -302,21 +323,17 @@ export const CommunityPostCard: React.FC<PostProps> = ({
                   >
                     <Flag size={16} className="text-gray-400" />
                     Báo cáo bài viết
+                  </button> */}
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false); // Đóng menu dropdown
+                      setIsDeleteModalOpen(true); // <--- THÊM DÒNG NÀY để mở Modal
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors font-medium cursor-pointer border-t border-gray-50"
+                  >
+                    <Trash2 size={16} />
+                    Xóa bài viết
                   </button>
-
-                  {/* Option 2: Chỉ hiển thị nếu là chủ bài viết */}
-                  {isMyPost && (
-                    <button
-                      onClick={() => {
-                        setShowDropdown(false);
-                        if (onDeletePost) onDeletePost(id); // Gọi hàm xóa truyền từ cha
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors font-medium cursor-pointer border-t border-gray-50"
-                    >
-                      <Trash2 size={16} />
-                      Xóa bài viết
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -350,13 +367,10 @@ export const CommunityPostCard: React.FC<PostProps> = ({
         </button>
 
         {/* Nút Comment */}
-        <Link
-          to={`/community/${id}`}
-          className="flex items-center cursor-pointer space-x-1.5 text-gray-500 hover:text-blue-500 hover:bg-gray-100 transition-colors px-2 py-1 rounded-md"
-        >
+        <div className="flex items-center cursor-pointer space-x-1.5 text-gray-500 hover:text-blue-500 hover:bg-gray-100 transition-colors px-2 py-1 rounded-md">
           <MessageCircle size={18} />
           <span className="text-xs font-medium">{comments}</span>
-        </Link>
+        </div>
 
         {/* Nút Save (Bookmark) */}
         <button
@@ -375,6 +389,14 @@ export const CommunityPostCard: React.FC<PostProps> = ({
           <Reply size={18} className="rotate-180" />
         </button>
       </div>
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => handleDeleteUser(id)}
+        isLoading={isDeleting}
+        title="Xóa bài viết?"
+        description={`Bạn có chắc chắn muốn xóa bài viết của ${author}? Dữ liệu của người dùng này sẽ bị mất vĩnh viễn.`}
+      />
     </article>
   );
 };
