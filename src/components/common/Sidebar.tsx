@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   Users, Building2, MessageSquareText, Briefcase,
   Contact2, LogOut, ChevronLeft, ChevronRight,
-  ChartBar
+  ChartBar,
+  Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/store/hook";
@@ -29,6 +30,7 @@ const NAVIGATION = [
     title: "THỐNG KÊ",
     items: [
       { icon: ChartBar, label: "Thống kê doanh thu", path: "/dashboard/statistics" },
+      { icon: Crown, label: "Gói đăng kí", path: "/dashboard/plans" },
     ],
   },
 ];
