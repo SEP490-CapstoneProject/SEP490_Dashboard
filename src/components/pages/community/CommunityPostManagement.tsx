@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Eye,
   Ban,
@@ -17,96 +17,108 @@ import { formatTimeAgo } from "@/utils/FormatTime";
 
 const CommunityPostManagement = () => {
   const { accessToken } = useAppSelector((state) => state.auth);
-
-  // --- States ---
-  const [activeTab, setActiveTab] = useState("Tất cả bài đăng");
-  const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
-  // Cursor Paging States
-  const [currentCursor, setCurrentCursor] = useState<number | null>(null);
-  const [nextCursor, setNextCursor] = useState<number | null>(null);
-  const [cursorStack, setCursorStack] = useState<(number | null)[]>([]); // Lưu vết để Back trang
+  // --- States ---
+  const [activeTab, setActiveTab] = useState("Tất cả");
+  const [allPosts, setAllPosts] = useState<CommunityPost[]>([]); // Lưu trữ toàn bộ dữ liệu đã fetch
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const pageSize = 5; // Số lượng bài viết hiển thị trên mỗi trang
 
-  const pageSize = 5;
-
-  // --- Core Fetch Logic ---
-  const loadData = async (targetCursor: number | null) => {
+  // --- Core Fetch Logic: Vét cạn dữ liệu từ API Cursor-based ---
+  const fetchAllData = async () => {
     setLoading(true);
+    let collectedPosts: CommunityPost[] = [];
+    let nextCursor: number | null = null;
+    let hasMore = true;
+    const API_FETCH_BATCH_SIZE = 50; // Lấy mỗi lần 50 bản ghi để tối ưu tốc độ
+
     try {
-      const url = new URL(
-        "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts",
-      );
-      url.searchParams.append("pageSize", pageSize.toString());
-      if (targetCursor) {
-        url.searchParams.append("cursor", targetCursor.toString());
-      }
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.ok) {
-        const res = await response.json();
-        // Giả sử API trả về mảng items và nextCursor
-        // Nếu API trả về mảng thô, cursor thường là ID của item cuối cùng
-        const items = res.items || res;
-        setPosts(items);
-
-        // Cập nhật Cursor tiếp theo (lấy ID của bài đăng cuối cùng trong danh sách)
-        if (items.length === pageSize) {
-          setNextCursor(items[items.length - 1].id);
-        } else {
-          setNextCursor(null);
+      while (hasMore) {
+        const url = new URL(
+          "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts"
+        );
+        url.searchParams.append("pageSize", API_FETCH_BATCH_SIZE.toString());
+        if (nextCursor) {
+          url.searchParams.append("cursor", nextCursor.toString());
         }
 
-        setCurrentCursor(targetCursor);
+        const response = await fetch(url.toString(), {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const res = await response.json();
+          const items = res.items || res;
+
+          if (!items || items.length === 0) {
+            hasMore = false;
+            break;
+          }
+
+          collectedPosts = [...collectedPosts, ...items];
+          
+          // Lấy ID của bài viết cuối cùng để làm cursor tiếp theo
+          nextCursor = items[items.length - 1].id;
+
+          // Nếu số lượng trả về ít hơn batch size, nghĩa là đã hết dữ liệu
+          if (items.length < API_FETCH_BATCH_SIZE) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
       }
+      setAllPosts(collectedPosts);
     } catch (error) {
-      console.error("Lỗi fetch data:", error);
+      console.error("Lỗi fetch toàn bộ dữ liệu:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Reset khi đổi Tab
+  // Tải lại dữ liệu khi tab thay đổi
   useEffect(() => {
-    setCursorStack([]);
-    loadData(null);
+    fetchAllData();
   }, [activeTab]);
 
-  // --- Navigation Handlers ---
-  const handleNext = () => {
-    if (nextCursor && !loading) {
-      setCursorStack((prev) => [...prev, currentCursor]); // Đẩy cursor hiện tại vào stack
-      loadData(nextCursor);
-    }
-  };
+  // --- Logic Xử lý Dữ liệu tại Client (Filter & Paging) ---
+  const filteredPosts = useMemo(() => {
+    return allPosts.filter((post) =>
+      post.author.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allPosts, searchTerm]);
 
-  const handleBack = () => {
-    if (cursorStack.length > 0 && !loading) {
-      const prevCursor = cursorStack[cursorStack.length - 1];
-      setCursorStack((prev) => prev.slice(0, -1)); // Xóa cursor cuối khỏi stack
-      loadData(prevCursor);
-    }
-  };
+  const totalItems = filteredPosts.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredPosts.slice(startIndex, startIndex + pageSize);
+  }, [filteredPosts, currentPage]);
+
+  // Reset về trang 1 khi người dùng tìm kiếm
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const handleViewDetail = (postId: number) => {
     navigate(`/dashboard/community-posts/${postId}`);
   };
-  const filteredPosts = posts.filter((post) =>
-    post.author.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+
   return (
     <div className="flex-1 min-h-screen bg-[#f7eccd] p-2 animate-in fade-in duration-500">
-      {/* 1. Header Stats (Giữ nguyên giao diện của bạn) */}
+      {/* 1. Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
         <StatCard
           label="Tổng bài đăng"
-          value="12,840"
+          value={allPosts.length.toLocaleString()}
           color="blue"
           icon={Flag}
         />
@@ -122,7 +134,7 @@ const CommunityPostManagement = () => {
 
       {/* 2. Main Content Card */}
       <div className="bg-white border-2 border-white shadow-sm rounded-[1rem] overflow-hidden">
-        {/* Tab Switcher */}
+        {/* Tab Switcher & Search */}
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-50 px-8 py-2 gap-4">
           <div className="flex">
             {["Tất cả", "Bị tố cáo", "Vi phạm"].map((tab) => (
@@ -133,7 +145,7 @@ const CommunityPostManagement = () => {
                   "py-5 px-6 text-[13px] font-bold transition-all relative cursor-pointer",
                   activeTab === tab
                     ? "text-blue-600"
-                    : "text-slate-400 hover:text-slate-600",
+                    : "text-slate-400 hover:text-slate-600"
                 )}
               >
                 {tab}
@@ -144,12 +156,11 @@ const CommunityPostManagement = () => {
             ))}
           </div>
 
-          {/* Search Input */}
           <div className="relative w-full md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên tác giả..."
+              placeholder="Tìm kiếm tác giả hoặc nội dung..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
@@ -157,22 +168,13 @@ const CommunityPostManagement = () => {
           </div>
         </div>
 
-        {/* Table Area */}
+        {/* 3. Table Area */}
         <div className="overflow-x-auto min-h-[400px]">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/30">
-                {[
-                  "TÁC GIẢ",
-                  "NỘI DUNG",
-                  "NGÀY TẠO",
-                  "TRẠNG THÁI",
-                  "HÀNH ĐỘNG",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
-                  >
+                {["TÁC GIẢ", "NỘI DUNG", "NGÀY TẠO", "TRẠNG THÁI", "HÀNH ĐỘNG"].map((h) => (
+                  <th key={h} className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                     {h}
                   </th>
                 ))}
@@ -181,21 +183,16 @@ const CommunityPostManagement = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-20 text-center">
+                  <td colSpan={5} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <Loader2 className="animate-spin" />
-                      <span className="text-xs font-bold uppercase">
-                        Đang tải dữ liệu...
-                      </span>
+                      <span className="text-xs font-bold uppercase">Đang đồng bộ dữ liệu hệ thống...</span>
                     </div>
                   </td>
                 </tr>
-              ) : filteredPosts.length > 0 ? (
-                filteredPosts.map((post) => (
-                  <tr
-                    key={post.id}
-                    className="hover:bg-slate-50/50 transition-colors group"
-                  >
+              ) : paginatedPosts.length > 0 ? (
+                paginatedPosts.map((post) => (
+                  <tr key={post.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-3">
                         <img
@@ -204,12 +201,8 @@ const CommunityPostManagement = () => {
                           className="w-9 h-9 rounded-xl object-cover border border-slate-100"
                         />
                         <div className="flex flex-col">
-                          <span className="text-[14px] font-bold text-slate-700">
-                            {post.author.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">
-                            {post.author.role}
-                          </span>
+                          <span className="text-[14px] font-bold text-slate-700">{post.author.name}</span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">{post.author.role}</span>
                         </div>
                       </div>
                     </td>
@@ -241,37 +234,61 @@ const CommunityPostManagement = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center text-slate-400">
-                    Không có dữ liệu hiển thị.
-                  </td>
+                  <td colSpan={5} className="py-20 text-center text-slate-400">Không có bài đăng nào phù hợp.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Cursor-Based Pagination UI */}
-        <div className="px-6 py-5 bg-slate-50/20 flex justify-between items-center border-t border-slate-50">
+        {/* 4. Numeric Pagination UI (Style UserManagement) */}
+        <div className="px-6 py-5 bg-slate-50/20 flex flex-col md:flex-row justify-between items-center border-t border-slate-50 gap-4">
           <p className="text-[12px] text-slate-400 font-medium">
-            Trang hiện tại:{" "}
-            <span className="text-slate-700 font-bold">
-              {cursorStack.length + 1}
-            </span>
+            Hiển thị <span className="text-slate-700 font-bold">{paginatedPosts.length}</span> trên <span className="text-slate-700 font-bold">{totalItems}</span> bài đăng
           </p>
-          <div className="flex items-center gap-3">
+          
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleBack}
-              disabled={cursorStack.length === 0 || loading}
-              className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-20 transition-all"
+              disabled={currentPage === 1 || loading}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="p-2 text-slate-400 hover:bg-white rounded-lg disabled:opacity-30 cursor-pointer transition-all"
             >
-              <ChevronLeft size={16} /> Trang trước
+              <ChevronLeft size={20} />
             </button>
+
+            {Array.from({ length: totalPages }).map((_, i) => {
+              const page = i + 1;
+              if (
+                page === 1 ||
+                page === totalPages ||
+                (page >= currentPage - 1 && page <= currentPage + 1)
+              ) {
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={cn(
+                      "w-9 h-9 rounded-xl text-[13px] font-black transition-all",
+                      currentPage === page
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                        : "text-slate-400 hover:bg-white"
+                    )}
+                  >
+                    {page}
+                  </button>
+                );
+              }
+              if (page === currentPage - 2 || page === currentPage + 2)
+                return <span key={page} className="text-slate-300">...</span>;
+              return null;
+            })}
+
             <button
-              onClick={handleNext}
-              disabled={!nextCursor || loading}
-              className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:bg-slate-200 shadow-md shadow-blue-500/10 transition-all"
+              disabled={currentPage === totalPages || loading}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="p-2 text-slate-400 hover:bg-white rounded-lg disabled:opacity-30 cursor-pointer transition-all"
             >
-              Trang sau <ChevronRight size={16} />
+              <ChevronRight size={20} />
             </button>
           </div>
         </div>
@@ -280,39 +297,23 @@ const CommunityPostManagement = () => {
   );
 };
 
-// Helper StatCard Component
+// --- StatCard Component ---
 const StatCard = ({ label, value, color, icon: Icon, isAlert }: any) => (
-  <div className="bg-white p-4 rounded-[1.5rem] shadow-sm border-2 border-white flex flex-col justify-between h-30">
+  <div className="bg-white p-4 rounded-[1.5rem] shadow-sm border-2 border-white flex flex-col justify-between h-32">
     <div className="flex justify-between items-start">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-        {label}
-      </p>
-      <div
-        className={cn(
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <div className={cn(
           "w-10 h-10 rounded-xl flex items-center justify-center",
-          color === "red"
-            ? "bg-red-50 text-red-500"
-            : "bg-slate-50 text-slate-400",
-        )}
-      >
+          color === "red" ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400"
+      )}>
         <Icon size={20} />
       </div>
     </div>
-    <h3
-      className={cn(
-        "text-2xl font-black",
-        color === "red" ? "text-red-500" : "text-slate-800",
-      )}
-    >
+    <h3 className={cn("text-2xl font-black", color === "red" ? "text-red-500" : "text-slate-800")}>
       {value}
     </h3>
-    <p
-      className={cn(
-        "text-[10px] font-bold",
-        color === "red" ? "text-red-400" : "text-blue-500",
-      )}
-    >
-      {isAlert ? "Cần xử lý ngay" : "+1 bài đăng mới"}
+    <p className={cn("text-[10px] font-bold", color === "red" ? "text-red-400" : "text-blue-500")}>
+      {isAlert ? "Cần xử lý ngay" : "+12 bài mới tháng này"}
     </p>
   </div>
 );
