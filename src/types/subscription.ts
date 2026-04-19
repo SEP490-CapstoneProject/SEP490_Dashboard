@@ -19,8 +19,8 @@ export interface Plan {
 export interface Subscription {
   id: number;
   userId: number;
-  username: string; // Thêm trường này
-  avatarUrl?: string; // Thêm trường này
+  userName: string; // Thêm trường này
+  userAvatar: string; // Thêm trường này
   planId: number;
   planName: string;
   startDate: string;
