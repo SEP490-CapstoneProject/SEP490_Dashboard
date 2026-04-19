@@ -81,6 +81,7 @@ const Dashboard: React.FC = () => {
       setLoadingStats(false);
     }
   };
+
   const getTodayRevenue = () => {
     if (!revenueData?.dailyRevenue) return "Chưa có dữ liệu";
 
@@ -88,10 +89,10 @@ const Dashboard: React.FC = () => {
     const todayRecord = revenueData.dailyRevenue.find(
       (item) => item.date.split("T")[0] === todayStr,
     );
-
+    const convertedRevenue = todayRecord ? new Intl.NumberFormat('vi-VN').format(todayRecord.revenue * 1000) : 0;
     return todayRecord
-      ? `${todayRecord.revenue.toLocaleString()} VND`
-      : "0 VND (Chưa có)";
+      ? `${convertedRevenue}đ`
+      : "0đ (Chưa có)";
   };
   const getTodayNewUserRegister = () => {
     if (!subscriptions) return "Chưa có dữ liệu";
@@ -107,7 +108,7 @@ const Dashboard: React.FC = () => {
     {
       id: "totalRevenue",
       title: "TỔNG DOANH THU",
-      value: overview ? `${overview.totalRevenue.toLocaleString()} VND` : "---",
+      value: overview ? `${new Intl.NumberFormat('vi-VN').format(overview.totalRevenue * 1000)}đ` : "---",
       trend: "",
       icon: <Wallet size={18} />,
       color: "bg-blue-600",
@@ -123,7 +124,9 @@ const Dashboard: React.FC = () => {
     {
       id: "mrr",
       title: "DOANH THU THÁNG NÀY",
-      value: overview ? `${overview.mrr.toLocaleString()} VND` : "---",
+      value: overview
+        ? `${new Intl.NumberFormat("vi-VN").format(overview.mrr * 1000)}đ`
+        : "---",
       trend: "Thu nhập định kỳ",
       icon: <History size={18} />,
       color: "bg-indigo-600",
