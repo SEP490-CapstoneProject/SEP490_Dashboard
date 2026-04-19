@@ -398,14 +398,14 @@ const Dashboard: React.FC = () => {
                         <div className="flex flex-row items-center gap-3">
                           <img
                             src={
-                              s.avatarUrl ||
-                              `https://ui-avatars.com/api/?name=${s.username}&background=ebefff&color=2563eb`
+                              s.userAvatar ||
+                              `https://ui-avatars.com/api/?name=${s.userName}&background=ebefff&color=2563eb`
                             }
-                            alt={s.username}
+                            alt={s.userName}
                             className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover inline-block"
                           />
                           <span className="text-sm font-black text-slate-900 tracking-tight leading-none mb-1">
-                            {s.username || "Người dùng "}
+                            {s.userName || "Người dùng "}
                           </span>
                         </div>
                       </td>
