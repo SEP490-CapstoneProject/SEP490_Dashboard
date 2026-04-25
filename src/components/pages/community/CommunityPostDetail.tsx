@@ -10,9 +10,11 @@ import { CommunityPostCard } from "./CommunityPostCard";
 import { notify } from "@/lib/toast";
 import { CommunityPost, PostComment } from "@/types/community";
 import { CommunityPostComment } from "./CommunityPostComment";
+import { useAppSelector } from "@/store/hook";
 
 export default function CommunityPostDetail() {
   const navigate = useNavigate();
+  const { accessToken } = useAppSelector((state) => state.auth);
   const { id } = useParams<{ id: string }>(); // Đây là postId từ URL
   const postId = Number(id); // Chuyển id từ string sang number nếu cần
   // States
@@ -30,10 +32,15 @@ export default function CommunityPostDetail() {
 
     try {
       // 1. Định nghĩa các yêu cầu fetch riêng biệt
-      const postFetch = fetch(`${API_BASE_URL}/community/posts/${postId}`);
+      const postFetch = fetch(`${API_BASE_URL}/community/posts/${postId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       const commentsFetch = fetch(
         `${API_BASE_URL}/community/posts/${postId}/comments`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
       );
 
       // 2. Chạy song song cả hai
