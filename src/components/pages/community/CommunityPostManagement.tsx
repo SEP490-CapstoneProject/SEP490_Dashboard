@@ -1,151 +1,328 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Eye,
-  Ban,
   ChevronLeft,
   ChevronRight,
   AlertCircle,
   Flag,
   Loader2,
+  CheckCircle2,
+  XCircle,
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/store/hook";
-import { CommunityPost } from "@/types/community";
 import { useNavigate } from "react-router-dom";
 import { formatTimeAgo } from "@/utils/FormatTime";
 
+// --- Types ---
+interface CommunityReport {
+  id: number;
+  communityPostId: number;
+  postOwnerUserId: number;
+  reporterUserId: number;
+  reason: string;
+  description: string;
+  status: "Pending" | "Approved" | "Rejected";
+  createdAt: string;
+}
+const REPORT_REASON_MAP: Record<string, string> = {
+  spam: "Spam / Nội dung rác",
+  harassment: "Quấy rối / Đả kích",
+  hate_speech: "Ngôn từ thù ghét",
+  inappropriate: "Nội dung không phù hợp",
+  other: "Lý do khác",
+};
 const CommunityPostManagement = () => {
   const { accessToken } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
 
   // --- States ---
-  const [activeTab, setActiveTab] = useState("Tất cả");
-  const [allPosts, setAllPosts] = useState<CommunityPost[]>([]); // Lưu trữ toàn bộ dữ liệu đã fetch
+  const [activeTab, setActiveTab] = useState("Bài đăng cộng đồng");
+  const [posts, setPosts] = useState<any[]>([]);
+  const [reports, setReports] = useState<CommunityReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [postsCount, setPostsCount] = useState(0);
+  const [todayPostsCount, setTodayPostsCount] = useState(0);
+  const [todayReportsCount, setTodayReportsCount] = useState(0);
+
+  // Search state
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Paging state (Cursor-based cho Posts, Offset-based cho Reports)
   const [currentPage, setCurrentPage] = useState(1);
-  
-  const pageSize = 5; // Số lượng bài viết hiển thị trên mỗi trang
+  const [cursors, setCursors] = useState<{ [key: number]: any }>({ 1: null });
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const pageSize = 5;
+  // Hàm tiện ích kiểm tra ngày hôm nay (so sánh YYYY-MM-DD)
+  const isToday = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+  // --- Logic Search Debounce ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Reset về trang 1 khi search
+      setCursors({ 1: null }); // Xóa bộ nhớ cursors cũ
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  // --- Core Fetch Logic: Vét cạn dữ liệu từ API Cursor-based ---
-  const fetchAllData = async () => {
-    setLoading(true);
-    let collectedPosts: CommunityPost[] = [];
-    let nextCursor: number | null = null;
-    let hasMore = true;
-    const API_FETCH_BATCH_SIZE = 50; // Lấy mỗi lần 50 bản ghi để tối ưu tốc độ
-
+  // --- API Handlers ---
+  // fetch count tất cả bài đăng
+  // 1. Fetch và đếm Bài đăng
+  const fetchAllPostsCount = async () => {
     try {
-      while (hasMore) {
-        const url = new URL(
-          "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts"
-        );
-        url.searchParams.append("pageSize", API_FETCH_BATCH_SIZE.toString());
-        if (nextCursor) {
-          url.searchParams.append("cursor", nextCursor.toString());
-        }
+      const response = await fetch(
+        "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts?pageSize=100",
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
 
-        const response = await fetch(url.toString(), {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+      if (response.ok) {
+        const data = await response.json();
+        const items = data.items || [];
 
-        if (response.ok) {
-          const res = await response.json();
-          const items = res.items || res;
+        // Tổng số bài đăng
+        setPostsCount(items.length);
 
-          if (!items || items.length === 0) {
-            hasMore = false;
-            break;
-          }
+        // Đếm số bài đăng có createdAt là hôm nay
+        const todayCount = items.filter((item: any) =>
+          isToday(item.createdAt),
+        ).length;
+        setTodayPostsCount(todayCount);
+      }
+    } catch (error) {
+      console.error("Lỗi đếm tổng bài đăng:", error);
+    }
+  };
 
-          collectedPosts = [...collectedPosts, ...items];
-          
-          // Lấy ID của bài viết cuối cùng để làm cursor tiếp theo
-          nextCursor = items[items.length - 1].id;
+  // 2. Fetch và đếm Báo cáo
+  const fetchAllReportCount = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/admin/reports`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
 
-          // Nếu số lượng trả về ít hơn batch size, nghĩa là đã hết dữ liệu
-          if (items.length < API_FETCH_BATCH_SIZE) {
-            hasMore = false;
-          }
-        } else {
-          hasMore = false;
+      if (response.ok) {
+        const data = await response.json(); // Giả định API trả về mảng []
+        const reportList = data || [];
+
+        // 1. Cập nhật danh sách reports vào state
+        setReports(reportList);
+
+        // 2. Chỉ đếm những report có trạng thái "Pending" và tạo trong ngày "Hôm nay"
+        const todayPendingCount = reportList.filter(
+          (item: any) => item.status === "Pending" && isToday(item.createdAt),
+        ).length;
+
+        // Cập nhật vào state hiển thị ở subText của StatCard
+        setTodayReportsCount(todayPendingCount);
+      }
+    } catch (error) {
+      console.error("Lỗi fetch reports:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  // Fetch bài đăng (Cursor-based)
+  const fetchPosts = async (page: number, search: string) => {
+    setLoading(true);
+    try {
+      const cursor = cursors[page] || null;
+      const url = new URL(
+        "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts",
+      );
+      url.searchParams.append("pageSize", pageSize.toString());
+      if (cursor) url.searchParams.append("cursor", cursor.toString());
+      if (search) url.searchParams.append("q", search);
+
+      const response = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data.items || []);
+        setHasMorePosts(data.hasMore);
+
+        // Lưu cursor cho trang tiếp theo để UI có thể hiển thị nút số
+        if (data.nextCursor) {
+          setCursors((prev) => ({ ...prev, [page + 1]: data.nextCursor }));
         }
       }
-      setAllPosts(collectedPosts);
     } catch (error) {
-      console.error("Lỗi fetch toàn bộ dữ liệu:", error);
+      console.error("Lỗi fetch posts:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Tải lại dữ liệu khi tab thay đổi
-  useEffect(() => {
-    fetchAllData();
-  }, [activeTab]);
+  // Fetch báo cáo (Admin API)
+  const fetchReports = async (page: number, statusFilter?: string) => {
+    setLoading(true);
+    try {
+      const url = new URL(
+        "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/admin/reports",
+      );
 
-  // --- Logic Xử lý Dữ liệu tại Client (Filter & Paging) ---
-  const filteredPosts = useMemo(() => {
-    return allPosts.filter((post) =>
-      post.author.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      post.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [allPosts, searchTerm]);
+      // Thêm các tham số filter vào URL
+      url.searchParams.append("PageNumber", page.toString());
+      url.searchParams.append("PageSize", pageSize.toString()); // pageSize thường là 5 hoặc 10
 
-  const totalItems = filteredPosts.length;
-  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+      // Nếu có lọc theo status (ví dụ: 'Pending')
+      if (statusFilter) {
+        url.searchParams.append("Status", statusFilter);
+      }
 
-  const paginatedPosts = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredPosts.slice(startIndex, startIndex + pageSize);
-  }, [filteredPosts, currentPage]);
+      const response = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
-  // Reset về trang 1 khi người dùng tìm kiếm
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+      if (response.ok) {
+        const data = await response.json();
 
-  const handleViewDetail = (postId: number) => {
-    navigate(`/dashboard/community-posts/${postId}`);
+        // Lưu ý: Nếu API trả về object có dạng { items: [], totalCount: ... }
+        // thì dùng data.items. Nếu trả về mảng trực tiếp thì dùng data.
+        const reportItems = data.items || data;
+        setReports(reportItems);
+
+        // Tính toán thống kê hôm nay từ dữ liệu trả về (nếu cần)
+        const todayCount = reportItems.filter((item: any) =>
+          isToday(item.createdAt),
+        ).length;
+        setTodayReportsCount(todayCount);
+
+        // Nếu API có trả về tổng số lượng bản ghi để phân trang
+        if (data.totalCount) setReports(data.totalCount);
+      }
+    } catch (error) {
+      console.error("Lỗi fetch reports:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Duyệt/Bác bỏ báo cáo
+  const handleReviewReport = async (
+    reportId: number,
+    action: "approve_violation" | "reject",
+  ) => {
+    const confirmMsg =
+      action === "approve_violation"
+        ? "Xác nhận bài viết này vi phạm và sẽ bị ẩn khỏi feed?"
+        : "Xác nhận bác bỏ tố cáo này?";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const response = await fetch(
+        `https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/admin/reports/${reportId}/review`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            action,
+            reviewNote:
+              action === "approve_violation"
+                ? "Vi phạm tiêu chuẩn cộng đồng"
+                : "Tố cáo không hợp lệ",
+          }),
+        },
+      );
+
+      if (response.ok) {
+        // Refresh lại dữ liệu cả 2 nguồn để cập nhật Stats và List
+        fetchPosts(currentPage, debouncedSearch);
+        fetchReports(currentPage);
+      }
+    } catch (error) {
+      console.error("Review error:", error);
+    }
+  };
+
+  // --- Effects ---
+
+  // Khởi chạy lần đầu: Lấy reports để có số lượng Stats
+  useEffect(() => {
+    fetchAllReportCount();
+    fetchAllPostsCount(); // Lấy tổng số bài đăng để hiển thị ở StatCard
+  }, []);
+
+  // Gọi lại API bài đăng mỗi khi trang hoặc từ khóa tìm kiếm thay đổi
+  useEffect(() => {
+    if (activeTab === "Bài đăng cộng đồng") {
+      fetchPosts(currentPage, debouncedSearch);
+    }
+  }, [currentPage, debouncedSearch, activeTab]);
+
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return reports.slice(start, start + pageSize);
+  }, [reports, currentPage]);
+
+  const totalPages = useMemo(() => {
+    if (activeTab === "Bài đăng cộng đồng") {
+      // Với Cursor-based, ta chỉ biết các trang đã load + trang tiếp theo nếu hasMore
+      const maxLoadedPage = Math.max(...Object.keys(cursors).map(Number));
+      return hasMorePosts ? maxLoadedPage : maxLoadedPage;
+    }
+    return Math.ceil(reports.length / pageSize) || 1;
+  }, [activeTab, cursors, hasMorePosts, reports.length]);
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    setDebouncedSearch("");
+    setCurrentPage(1);
+    setCursors({ 1: null });
+  };
   return (
-    <div className="flex-1 min-h-screen bg-[#f7eccd] p-2 animate-in fade-in duration-500">
+    <div className="flex-1 min-h-screen bg-[#f7eccd] p-4 animate-in fade-in duration-500">
       {/* 1. Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <StatCard
-          label="Tổng bài đăng"
-          value={allPosts.length.toLocaleString()}
+          label="Tổng bài đăng cộng đồng"
+          value={postsCount}
           color="blue"
           icon={Flag}
+          subText={`+${todayPostsCount} bài đăng hôm nay`} // Text nhỏ bên dưới
         />
         <StatCard
-          label="Vi phạm"
-          value="12"
-          color="red"
+          label="Đang chờ duyệt"
+          value={todayReportsCount}
+          color="amber"
           icon={AlertCircle}
-          isAlert
+          subText={`+${todayReportsCount} tố cáo hôm nay`} // Hoặc bất kỳ nội dung nào bạn muốn
         />
-        <StatCard label="Bị tố cáo" value="08" color="amber" icon={Flag} />
       </div>
 
       {/* 2. Main Content Card */}
-      <div className="bg-white border-2 border-white shadow-sm rounded-[1rem] overflow-hidden">
-        {/* Tab Switcher & Search */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-50 px-8 py-2 gap-4">
+      <div className="bg-white border-2 border-white shadow-sm rounded-[1.5rem] overflow-hidden">
+        {/* Header Table: Tabs & Search */}
+        <div className="flex flex-col md:flex-row justify-between items-center border-b border-slate-50 px-8 py-2 gap-4">
           <div className="flex">
-            {["Tất cả", "Bị tố cáo", "Vi phạm"].map((tab) => (
+            {["Bài đăng cộng đồng", "Bị tố cáo"].map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setCurrentPage(1);
+                }}
                 className={cn(
                   "py-5 px-6 text-[13px] font-bold transition-all relative cursor-pointer",
                   activeTab === tab
                     ? "text-blue-600"
-                    : "text-slate-400 hover:text-slate-600"
+                    : "text-slate-400 hover:text-slate-600",
                 )}
               >
                 {tab}
@@ -156,137 +333,258 @@ const CommunityPostManagement = () => {
             ))}
           </div>
 
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm tác giả hoặc nội dung..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            />
-          </div>
+          {activeTab === "Bài đăng cộng đồng" && (
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm nội dung bài viết..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+          )}
         </div>
 
         {/* 3. Table Area */}
-        <div className="overflow-x-auto min-h-[400px]">
+        <div className="overflow-x-auto min-h-[450px]">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/30">
-                {["TÁC GIẢ", "NỘI DUNG", "NGÀY TẠO", "TRẠNG THÁI", "HÀNH ĐỘNG"].map((h) => (
-                  <th key={h} className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    {h}
-                  </th>
-                ))}
+                {activeTab === "Bài đăng cộng đồng" ? (
+                  <>
+                    {["Tác giả", "Nội dung", "Ngày tạo", "Hành động"].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                        >
+                          {h}
+                        </th>
+                      ),
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {[
+                      "ID Post",
+                      "Lý do",
+                      "Mô tả",
+                      "Ngày báo",
+                      "Trạng thái",
+                      "Hành động",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
+                /* 1. Trạng thái Loading */
                 <tr>
-                  <td colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-2 text-slate-400">
-                      <Loader2 className="animate-spin" />
-                      <span className="text-xs font-bold uppercase">Đang đồng bộ dữ liệu hệ thống...</span>
-                    </div>
+                  <td colSpan={6} className="py-20 text-center">
+                    <Loader2 className="animate-spin mx-auto text-slate-400" />
                   </td>
                 </tr>
-              ) : paginatedPosts.length > 0 ? (
-                paginatedPosts.map((post) => (
-                  <tr key={post.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={post.author.avatar}
-                          alt="avatar"
-                          className="w-9 h-9 rounded-xl object-cover border border-slate-100"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-[14px] font-bold text-slate-700">{post.author.name}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">{post.author.role}</span>
+              ) : activeTab === "Bài đăng cộng đồng" ? (
+                /* 2. Tab Bài đăng: Kiểm tra có data hay không */
+                posts.length > 0 ? (
+                  posts.map((post) => (
+                    <tr
+                      key={post.id}
+                      className="hover:bg-slate-50/50 transition-colors group"
+                    >
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={post.author.avatar}
+                            className="w-9 h-9 rounded-xl object-cover border border-slate-100"
+                          />
+                          <div className="flex flex-col text-left">
+                            <span className="text-[14px] font-bold text-slate-700">
+                              {post.author.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">
+                              {post.author.role}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5 text-[13px] text-slate-500 font-medium max-w-md">
-                      <p className="line-clamp-2">{post.description}</p>
-                    </td>
-                    <td className="px-8 py-5 text-[12px] font-bold text-slate-400">
-                      {formatTimeAgo(post.createdAt)}
-                    </td>
-                    <td className="px-8 py-5">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-500 uppercase">
-                        Hoạt động
-                      </span>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-2">
+                      </td>
+                      <td className="px-8 py-5 text-[13px] text-slate-500 max-w-md">
+                        <p className="line-clamp-2">{post.description}</p>
+                      </td>
+                      <td className="px-8 py-5 text-[12px] font-bold text-slate-400">
+                        {formatTimeAgo(post.createdAt)}
+                      </td>
+                      <td className="px-8 py-5">
                         <button
+                          onClick={() =>
+                            navigate(`/dashboard/community-posts/${post.id}`)
+                          }
                           className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
-                          onClick={() => handleViewDetail(post.id)}
                         >
                           <Eye size={18} />
                         </button>
-                        <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer">
-                          <Ban size={18} />
-                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  /* UI Empty State cho Bài đăng */
+                  <EmptyState
+                    searchTerm={searchTerm}
+                    handleClearSearch={handleClearSearch}
+                  />
+                )
+              ) : /* 3. Tab Bị tố cáo: Kiểm tra có data hay không */
+              paginatedReports.length > 0 ? (
+                paginatedReports.map((report) => (
+                  <tr
+                    key={report.id}
+                    className="hover:bg-slate-50/50 transition-colors"
+                  >
+                    <td className="px-8 py-5 text-[13px] font-bold text-blue-600">
+                      #{report.communityPostId}
+                    </td>
+                    <td className="px-8 py-5 text-[11px] font-black uppercase">
+                      <span className="bg-red-50 text-red-500 px-2 py-1 rounded-md">
+                        {/* Nếu không tìm thấy key trong map, hiển thị giá trị gốc */}
+                        {REPORT_REASON_MAP[report.reason] || report.reason}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-[13px] text-slate-500 max-w-[200px] truncate">
+                      {report.description}
+                    </td>
+                    <td className="px-8 py-5 text-[12px] font-bold text-slate-400">
+                      {formatTimeAgo(report.createdAt)}
+                    </td>
+                    <td className="px-8 py-5">
+                      <span
+                        className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                          report.status === "Pending" &&
+                            "bg-amber-50 text-amber-500",
+                          report.status === "Approved" &&
+                            "bg-emerald-50 text-emerald-500",
+                          report.status === "Rejected" &&
+                            "bg-slate-100 text-slate-400",
+                        )}
+                      >
+                        {report.status === "Pending"
+                          ? "Chờ duyệt"
+                          : report.status === "Approved"
+                            ? "Vi phạm"
+                            : "Bác bỏ"}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-center">
+                      <div className="flex items-center gap-2">
+                        {report.status === "Pending" ? (
+                          <>
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/dashboard/community-posts/${report.communityPostId}`,
+                                )
+                              }
+                              className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                            >
+                              <Eye size={20} />
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleReviewReport(
+                                  report.id,
+                                  "approve_violation",
+                                )
+                              }
+                              className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
+                            >
+                              <CheckCircle2 size={20} />
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleReviewReport(report.id, "reject")
+                              }
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                            >
+                              <XCircle size={20} />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/dashboard/community-posts/${report.communityPostId}`,
+                              )
+                            }
+                            className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                          >
+                            <Eye size={20} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={5} className="py-20 text-center text-slate-400">Không có bài đăng nào phù hợp.</td>
-                </tr>
+                /* UI Empty State cho Báo cáo */
+                <EmptyState
+                  searchTerm={searchTerm}
+                  handleClearSearch={handleClearSearch}
+                />
               )}
             </tbody>
           </table>
         </div>
 
-        {/* 4. Numeric Pagination UI (Style UserManagement) */}
+        {/* 4. Numeric Pagination UI */}
         <div className="px-6 py-5 bg-slate-50/20 flex flex-col md:flex-row justify-between items-center border-t border-slate-50 gap-4">
           <p className="text-[12px] text-slate-400 font-medium">
-            Hiển thị <span className="text-slate-700 font-bold">{paginatedPosts.length}</span> trên <span className="text-slate-700 font-bold">{totalItems}</span> bài đăng
+            Hiển thị trang{" "}
+            <span className="text-slate-700 font-bold">{currentPage}</span> trên{" "}
+            {totalPages}
           </p>
-          
+
           <div className="flex items-center gap-2">
             <button
               disabled={currentPage === 1 || loading}
               onClick={() => setCurrentPage((p) => p - 1)}
-              className="p-2 text-slate-400 hover:bg-white rounded-lg disabled:opacity-30 cursor-pointer transition-all"
+              className="p-2 text-slate-400 hover:bg-white rounded-lg disabled:opacity-30 cursor-pointer transition-all hover:shadow-sm"
             >
               <ChevronLeft size={20} />
             </button>
 
-            {Array.from({ length: totalPages }).map((_, i) => {
-              const page = i + 1;
-              if (
-                page === 1 ||
-                page === totalPages ||
-                (page >= currentPage - 1 && page <= currentPage + 1)
-              ) {
-                return (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={cn(
-                      "w-9 h-9 rounded-xl text-[13px] font-black transition-all",
-                      currentPage === page
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                        : "text-slate-400 hover:bg-white"
-                    )}
-                  >
-                    {page}
-                  </button>
-                );
-              }
-              if (page === currentPage - 2 || page === currentPage + 2)
-                return <span key={page} className="text-slate-300">...</span>;
-              return null;
-            })}
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={cn(
+                  "w-9 h-9 rounded-xl text-[13px] font-black transition-all",
+                  currentPage === i + 1
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                    : "text-slate-400 hover:bg-white hover:text-slate-600",
+                )}
+              >
+                {i + 1}
+              </button>
+            ))}
 
             <button
-              disabled={currentPage === totalPages || loading}
+              disabled={
+                (activeTab === "Bài đăng cộng đồng"
+                  ? !hasMorePosts
+                  : currentPage === totalPages) || loading
+              }
               onClick={() => setCurrentPage((p) => p + 1)}
-              className="p-2 text-slate-400 hover:bg-white rounded-lg disabled:opacity-30 cursor-pointer transition-all"
+              className="p-2 text-slate-400 hover:bg-white rounded-lg disabled:opacity-30 cursor-pointer transition-all hover:shadow-sm"
             >
               <ChevronRight size={20} />
             </button>
@@ -297,25 +595,78 @@ const CommunityPostManagement = () => {
   );
 };
 
-// --- StatCard Component ---
-const StatCard = ({ label, value, color, icon: Icon, isAlert }: any) => (
-  <div className="bg-white p-4 rounded-[1.5rem] shadow-sm border-2 border-white flex flex-col justify-between h-32">
+const StatCard = ({ label, value, color, icon: Icon, subText }: any) => (
+  <div className="bg-white p-5 rounded-[1.5rem] shadow-sm border-2 border-white flex flex-col justify-between h-32 transition-all hover:scale-[1.02]">
     <div className="flex justify-between items-start">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-      <div className={cn(
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+        {label}
+      </p>
+      <div
+        className={cn(
           "w-10 h-10 rounded-xl flex items-center justify-center",
-          color === "red" ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400"
-      )}>
+          color === "amber"
+            ? "bg-amber-50 text-amber-500"
+            : "bg-blue-50 text-blue-500",
+        )}
+      >
         <Icon size={20} />
       </div>
     </div>
-    <h3 className={cn("text-2xl font-black", color === "red" ? "text-red-500" : "text-slate-800")}>
-      {value}
-    </h3>
-    <p className={cn("text-[10px] font-bold", color === "red" ? "text-red-400" : "text-blue-500")}>
-      {isAlert ? "Cần xử lý ngay" : "+12 bài mới tháng này"}
-    </p>
+
+    <div>
+      <h3 className="text-2xl font-black text-slate-800 tracking-tight leading-none">
+        {value}
+      </h3>
+      {/* Hiển thị text nhỏ ở dưới */}
+      {subText && (
+        <p
+          className={cn(
+            "text-[10px] font-bold mt-1",
+            color === "amber" ? "text-amber-500/80" : "text-blue-500/80",
+          )}
+        >
+          {subText}
+        </p>
+      )}
+    </div>
   </div>
 );
-
+const EmptyState = ({
+  searchTerm,
+  handleClearSearch,
+}: {
+  searchTerm: string;
+  handleClearSearch: () => void;
+}) => (
+  <tr>
+    <td colSpan={6} className="py-24">
+      <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
+        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+          <Search size={32} className="text-slate-300" />
+        </div>
+        <h3 className="text-[16px] font-black text-slate-700">
+          Không tìm thấy kết quả
+        </h3>
+        <p className="text-[13px] text-slate-400 mt-1 max-w-[280px] text-center leading-relaxed">
+          {searchTerm ? (
+            <>
+              Chúng tôi không tìm thấy nội dung nào khớp với từ khóa{" "}
+              <span className="font-bold text-slate-600">"{searchTerm}"</span>.
+            </>
+          ) : (
+            "Hiện chưa có dữ liệu hiển thị trong danh sách này."
+          )}
+        </p>
+        {searchTerm && (
+          <button
+            onClick={handleClearSearch}
+            className="mt-6 px-6 py-2.5 bg-blue-600 text-white text-[12px] font-black uppercase rounded-xl hover:bg-blue-700 transition-all shadow-lg cursor-pointer"
+          >
+            Xóa tìm kiếm
+          </button>
+        )}
+      </div>
+    </td>
+  </tr>
+);
 export default CommunityPostManagement;
