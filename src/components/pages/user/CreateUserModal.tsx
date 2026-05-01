@@ -33,7 +33,7 @@ export const CreateUserModal = ({
 
     try {
       const response = await fetch(
-        "https://auth-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Auth/register",
+        "https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/register",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

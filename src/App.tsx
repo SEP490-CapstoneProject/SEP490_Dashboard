@@ -37,6 +37,9 @@ const Dashboard = lazy(
 const PlanManagement = lazy(
   () => import("./components/pages/subscription/PlanManagement"),
 );
+const CriteriaPage = lazy(
+  () => import("./components/pages/recruiter/CriteriaPage"),
+);
 
 import { ToastContainer } from "react-toastify";
 
@@ -89,6 +92,7 @@ function App() {
             <Route path="statistics" element={<Dashboard />} />
             <Route path="plans" element={<PlanManagement />} />
             <Route path="portfolios" element={<PortfolioManagement />} />
+            <Route path="criteria" element={<CriteriaPage />} />
           </Route>
           <Route path="*" element={<div>404 Not Found</div>} />
         </Routes>

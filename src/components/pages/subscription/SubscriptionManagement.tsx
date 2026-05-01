@@ -61,11 +61,11 @@ const Dashboard: React.FC = () => {
       // Gọi cả 2 API cùng lúc
       const [resOverview, resRevenue] = await Promise.all([
         fetch(
-          "https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/analytics/overview",
+          "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/admin/analytics/overview",
           { headers },
         ),
         fetch(
-          "https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/analytics/revenue",
+          "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/admin/analytics/revenue",
           { headers },
         ),
       ]);

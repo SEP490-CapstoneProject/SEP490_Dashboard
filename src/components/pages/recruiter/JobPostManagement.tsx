@@ -60,7 +60,7 @@ const JobPostManagement = () => {
     try {
       while (hasMore) {
         const url = new URL(
-          "https://company-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/company-posts"
+          "https://company-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/company-posts"
         );
         url.searchParams.append("limit", LIMIT.toString());
         if (nextCursor) url.searchParams.append("cursor", nextCursor);

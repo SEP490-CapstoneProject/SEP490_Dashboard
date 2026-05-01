@@ -147,7 +147,7 @@ export const CommunityPostCard: React.FC<PostProps> = ({
   const handleFavoriteAction = async () => {
     try {
       const response = await fetch(
-        `https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts/${id}/favorite`,
+        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/posts/${id}/favorite`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}` },

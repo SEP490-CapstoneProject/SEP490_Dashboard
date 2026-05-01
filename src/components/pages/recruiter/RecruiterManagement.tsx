@@ -56,7 +56,7 @@ const RecruiterManagement = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "https://userprofile-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Company",
+        "https://userprofile-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Company",
       );
       const data = await response.json();
       console.log("company", data);

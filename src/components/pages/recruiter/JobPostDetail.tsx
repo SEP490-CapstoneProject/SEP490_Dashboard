@@ -40,7 +40,7 @@ export default function JobPostDetails() {
       try {
         setIsLoading(true);
         const response = await fetch(
-          `https://company-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/company-posts/${postId}`,
+          `https://company-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/company-posts/${postId}`,
           {
             // Nếu API yêu cầu token, hãy uncomment dòng dưới:
             // headers: { Authorization: `Bearer ${accessToken}` }

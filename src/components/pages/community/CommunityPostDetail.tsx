@@ -21,7 +21,7 @@ export default function CommunityPostDetail() {
   const [postComments, setPostComments] = useState<PostComment[]>([]);
 
   const API_BASE_URL =
-    "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api";
+    "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
 
   // --- 2. FETCH DATA ---
   const fetchData = async () => {

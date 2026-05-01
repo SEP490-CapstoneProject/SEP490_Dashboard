@@ -39,12 +39,12 @@ const JobPostsTab = ({ userId }: JobPostsTabProps) => {
 
     try {
       const getCompanyId = await fetch(
-        `https://userprofile-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Company/by-user/${userId}`,
+        `https://userprofile-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Company/by-user/${userId}`,
       );
       const companyData = await getCompanyId.json();
       const companyId = companyData.id;
       const url = new URL(
-        `https://company-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/company-posts/company/${companyId}`,
+        `https://company-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/company-posts/company/${companyId}`,
       );
       url.searchParams.append("limit", limit.toString());
       if (cursor) url.searchParams.append("cursor", cursor);

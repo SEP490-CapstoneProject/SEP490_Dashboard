@@ -4,7 +4,7 @@ import { LoginRequest, LoginResponse, RegisterRequest } from "@/types/auth";
 // - Development: /api (sử dụng Vite proxy)
 // - Production: full URL từ VITE_API_GATEWAY_BASE_URL
 const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_BASE_URL || 
-  "https://api-gateway.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api";
+  "https://api-gateway.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
 
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {

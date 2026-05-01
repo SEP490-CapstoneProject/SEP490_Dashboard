@@ -1,8 +1,9 @@
 import { Portfolio, PortfolioListResponse } from "@/types/portfolio";
+import { Criteria } from "@/types/criteria";
 
 // Portfolio Service Base URL
 const PORTFOLIO_API_BASE_URL = import.meta.env.VITE_PORTFOLIO_API_BASE_URL || 
-  "https://portfolio-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api";
+  "https://portfolio-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
 
 export const portfolioAPI = {
   /**
@@ -311,6 +312,137 @@ export const portfolioAPI = {
       return data;
     } catch (error) {
       console.error("❌ Current user portfolio fetch error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch all criteria
+   * @param accessToken - Authorization token
+   * @returns Criteria list
+   */
+  getCriteria: async (accessToken?: string): Promise<Criteria[]> => {
+    try {
+      console.log("📋 Fetching criteria");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Criteria request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/admin/criteria`,
+        {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: Criteria[];
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Criteria fetched:", {
+            count: data.length,
+          });
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Criteria fetch failed with status:", response.status);
+        throw new Error(`Failed to fetch criteria: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Criteria fetch error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a criterion by ID
+   * @param id - Criterion ID
+   * @param accessToken - Authorization token
+   * @returns Delete response message
+   */
+  deleteCriteria: async (id: number, accessToken?: string): Promise<{ message: string }> => {
+    try {
+      console.log("🗑️ Deleting criterion:", id);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Delete criterion request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/admin/criteria/${id}`,
+        {
+          method: "DELETE",
+          headers,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: { message: string };
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Criterion deleted:", data);
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Delete criterion failed with status:", response.status);
+        throw new Error(`Failed to delete criterion: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Delete criterion error:", error);
       throw error;
     }
   },

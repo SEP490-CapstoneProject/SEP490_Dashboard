@@ -45,7 +45,7 @@ const PlanManagement: React.FC = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Plans",
+        "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Plans",
         {
           headers: {
             "Content-Type": "application/json",

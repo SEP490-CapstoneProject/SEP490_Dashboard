@@ -39,7 +39,7 @@ const CommunityPostManagement = () => {
     try {
       while (hasMore) {
         const url = new URL(
-          "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts"
+          "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/posts"
         );
         url.searchParams.append("pageSize", API_FETCH_BATCH_SIZE.toString());
         if (nextCursor) {

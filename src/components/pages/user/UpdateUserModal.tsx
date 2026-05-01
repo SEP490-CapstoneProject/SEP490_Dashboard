@@ -61,7 +61,7 @@ const UpdateUserModal = ({ isOpen, userProfile, onClose, onSuccess }: UpdateUser
       if (avatar) formData.append("Avatar", avatar);
       if (coverImage) formData.append("CoverImage", coverImage);
 
-      const response = await fetch(`https://userprofile-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Employee/${userProfile.id}`, {
+      const response = await fetch(`https://userprofile-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Employee/${userProfile.id}`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${accessToken}` },
         body: formData,

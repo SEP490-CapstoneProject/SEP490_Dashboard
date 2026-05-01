@@ -34,7 +34,7 @@ const sortOptions = [
 // Giả sử API trả về toàn bộ danh sách để client tự xử lý lọc/phân trang
 const fetchAllUsers = async (): Promise<Employee[]> => {
   const response = await fetch(
-    "https://userprofile-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Employee",
+    "https://userprofile-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Employee",
   );
   return await response.json();
 };
@@ -120,7 +120,7 @@ const UserManagement = () => {
   const handleLockUser = async (userId: number) => {
     try {
       const response = await fetch(
-        `https://auth-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Auth/lock-user/${userId}`,
+        `https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/lock-user/${userId}`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -138,7 +138,7 @@ const UserManagement = () => {
   const handleUnLockUser = async (userId: number) => {
     try {
       const response = await fetch(
-        `https://auth-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Auth/unlock-user/${userId}`,
+        `https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/unlock-user/${userId}`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${accessToken}` },
