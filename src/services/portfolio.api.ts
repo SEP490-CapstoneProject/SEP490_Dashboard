@@ -383,6 +383,204 @@ export const portfolioAPI = {
   },
 
   /**
+   * Create a new criterion
+   * @param criteriaData - Criterion data (name, kind)
+   * @param accessToken - Authorization token
+   * @returns Created criterion
+   */
+  createCriteria: async (criteriaData: { name: string; kind: string }, accessToken?: string): Promise<Criteria> => {
+    try {
+      console.log("➕ Creating new criterion:", criteriaData);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Create criterion request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/admin/criteria`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(criteriaData),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: Criteria;
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Criterion created:", data);
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Create criterion failed with status:", response.status);
+        throw new Error(`Failed to create criterion: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Create criterion error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update a criterion by ID
+   * @param id - Criterion ID
+   * @param criteriaData - Criterion data (name, kind)
+   * @param accessToken - Authorization token
+   * @returns Updated criterion
+   */
+  updateCriteria: async (id: number, criteriaData: { name: string; kind: string }, accessToken?: string): Promise<Criteria> => {
+    try {
+      console.log("✏️ Updating criterion:", id, criteriaData);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Update criterion request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/admin/criteria/${id}`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(criteriaData),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: Criteria;
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Criterion updated:", data);
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Update criterion failed with status:", response.status);
+        throw new Error(`Failed to update criterion: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Update criterion error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Toggle criterion status (soft delete) by ID
+   * @param id - Criterion ID
+   * @param accessToken - Authorization token
+   * @returns Updated criterion with new status
+   */
+  toggleCriteria: async (id: number, accessToken?: string): Promise<{ message: string; criterion: Criteria }> => {
+    try {
+      console.log("🔄 Toggling criterion status:", id);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Toggle criterion request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/admin/criteria/${id}/toggle`,
+        {
+          method: "PATCH",
+          headers,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: { message: string; criterion: Criteria };
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Criterion toggled:", data);
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Toggle criterion failed with status:", response.status);
+        throw new Error(`Failed to toggle criterion: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Toggle criterion error:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Delete a criterion by ID
    * @param id - Criterion ID
    * @param accessToken - Authorization token

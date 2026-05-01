@@ -10,6 +10,8 @@ import {
   XCircle,
   X,
   Trash2,
+  Plus,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { portfolioAPI } from "@/services/portfolio.api";
@@ -23,8 +25,13 @@ const CriteriaPage = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCriteria, setSelectedCriteria] = useState<Criteria | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
+  const [formData, setFormData] = useState({ name: "", kind: "" });
   const pageSize = 5;
 
   // Tạo màu động dựa trên kind (không hardcode)
@@ -54,22 +61,80 @@ const CriteriaPage = () => {
     setShowDeleteConfirm(false);
   };
 
-  // Handle deleting criteria
-  const handleDeleteCriteria = async () => {
+  // Handle creating new criteria
+  const handleCreateCriteria = async () => {
+    if (!formData.name.trim() || !formData.kind.trim() || !accessToken) {
+      alert("Vui lòng nhập đầy đủ tên tiêu chí và loại");
+      return;
+    }
+
+    setCreateLoading(true);
+    try {
+      const newCriteria = await portfolioAPI.createCriteria(formData, accessToken || undefined);
+      setCriteria([...criteria, newCriteria]);
+      setShowCreateModal(false);
+      setFormData({ name: "", kind: "" });
+      console.log("✅ Criterion created successfully");
+    } catch (error) {
+      console.error("❌ Error creating criterion:", error);
+      alert("Lỗi khi tạo tiêu chí. Vui lòng thử lại.");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // Handle editing criteria
+  const handleEditCriteria = async () => {
+    if (!selectedCriteria || !formData.name.trim() || !formData.kind.trim() || !accessToken) {
+      alert("Vui lòng nhập đầy đủ tên tiêu chí và loại");
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const updatedCriteria = await portfolioAPI.updateCriteria(
+        selectedCriteria.id,
+        formData,
+        accessToken || undefined
+      );
+      setCriteria(criteria.map((c) => (c.id === selectedCriteria.id ? updatedCriteria : c)));
+      setSelectedCriteria(updatedCriteria);
+      setShowEditModal(false);
+      setFormData({ name: "", kind: "" });
+      console.log("✅ Criterion updated successfully");
+    } catch (error) {
+      console.error("❌ Error updating criterion:", error);
+      alert("Lỗi khi cập nhật tiêu chí. Vui lòng thử lại.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Handle toggling criterion status (soft delete)
+  const handleToggleCriteria = async () => {
     if (!selectedCriteria || !accessToken) return;
 
-    setDeleteLoading(true);
+    setToggleLoading(true);
     try {
-      await portfolioAPI.deleteCriteria(selectedCriteria.id, accessToken || undefined);
-      // Remove from list
-      setCriteria(criteria.filter((c) => c.id !== selectedCriteria.id));
-      setSelectedCriteria(null);
+      const response = await portfolioAPI.toggleCriteria(selectedCriteria.id, accessToken || undefined);
+      const updatedCriteria = response.criterion;
+      setCriteria(criteria.map((c) => (c.id === selectedCriteria.id ? updatedCriteria : c)));
+      setSelectedCriteria(updatedCriteria);
       setShowDeleteConfirm(false);
-      console.log("✅ Criterion deleted successfully");
+      console.log("✅ Criterion toggled successfully");
     } catch (error) {
-      console.error("❌ Error deleting criterion:", error);
+      console.error("❌ Error toggling criterion:", error);
+      alert("Lỗi khi thay đổi trạng thái tiêu chí. Vui lòng thử lại.");
     } finally {
-      setDeleteLoading(false);
+      setToggleLoading(false);
+    }
+  };
+
+  // Handle opening edit modal
+  const handleOpenEditModal = () => {
+    if (selectedCriteria) {
+      setFormData({ name: selectedCriteria.name, kind: selectedCriteria.kind });
+      setShowEditModal(true);
     }
   };
 
@@ -151,9 +216,17 @@ const CriteriaPage = () => {
           <h2 className="text-xl font-black text-slate-800 tracking-tight">
             Danh sách tiêu chí đánh giá
           </h2>
-          <button className="flex items-center gap-2 px-4 py-2 border-2 border-slate-50 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all">
-            <Filter size={16} /> Lọc dữ liệu
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 border-2 border-blue-600 rounded-xl text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all"
+            >
+              <Plus size={16} /> Thêm mới
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 border-2 border-slate-50 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all">
+              <Filter size={16} /> Lọc dữ liệu
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher */}
@@ -320,11 +393,40 @@ const CriteriaPage = () => {
         <CriteriaDetailModal
           criteria={selectedCriteria}
           onClose={handleCloseModal}
-          onDelete={() => setShowDeleteConfirm(true)}
-          deleteLoading={deleteLoading}
+          onEdit={handleOpenEditModal}
+          onToggle={() => setShowDeleteConfirm(true)}
+          toggleLoading={toggleLoading}
           showDeleteConfirm={showDeleteConfirm}
-          onConfirmDelete={handleDeleteCriteria}
+          onConfirmToggle={handleToggleCriteria}
           onCancelDelete={() => setShowDeleteConfirm(false)}
+        />
+      )}
+
+      {/* Create Criteria Modal */}
+      {showCreateModal && (
+        <CreateCriteriaModal
+          onClose={() => {
+            setShowCreateModal(false);
+            setFormData({ name: "", kind: "" });
+          }}
+          onSubmit={handleCreateCriteria}
+          loading={createLoading}
+          formData={formData}
+          setFormData={setFormData}
+        />
+      )}
+
+      {/* Edit Criteria Modal */}
+      {showEditModal && (
+        <EditCriteriaModal
+          onClose={() => {
+            setShowEditModal(false);
+            setFormData({ name: "", kind: "" });
+          }}
+          onSubmit={handleEditCriteria}
+          loading={editLoading}
+          formData={formData}
+          setFormData={setFormData}
         />
       )}
     </div>
@@ -375,20 +477,22 @@ const StatCard = ({
 interface CriteriaDetailModalProps {
   criteria: Criteria;
   onClose: () => void;
-  onDelete: () => void;
-  deleteLoading: boolean;
+  onEdit: () => void;
+  onToggle: () => void;
+  toggleLoading: boolean;
   showDeleteConfirm: boolean;
-  onConfirmDelete: () => void;
+  onConfirmToggle: () => void;
   onCancelDelete: () => void;
 }
 
 const CriteriaDetailModal = ({
   criteria,
   onClose,
-  onDelete,
-  deleteLoading,
+  onEdit,
+  onToggle,
+  toggleLoading,
   showDeleteConfirm,
-  onConfirmDelete,
+  onConfirmToggle,
   onCancelDelete,
 }: CriteriaDetailModalProps) => {
   return (
@@ -449,30 +553,30 @@ const CriteriaDetailModal = ({
 
         {/* Action Buttons */}
         {showDeleteConfirm ? (
-          <div className="p-6 border-t border-slate-100 space-y-3 bg-red-50">
-            <p className="text-[13px] font-bold text-red-700">
-              Bạn có chắc muốn xóa tiêu chí này? Hành động này không thể hoàn tác.
+          <div className="p-6 border-t border-slate-100 space-y-3 bg-orange-50">
+            <p className="text-[13px] font-bold text-orange-700">
+              Bạn có chắc muốn thay đổi trạng thái tiêu chí này?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={onCancelDelete}
-                disabled={deleteLoading}
+                disabled={toggleLoading}
                 className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50"
               >
                 Hủy
               </button>
               <button
-                onClick={onConfirmDelete}
-                disabled={deleteLoading}
-                className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white bg-red-600 hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                onClick={onConfirmToggle}
+                disabled={toggleLoading}
+                className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white bg-orange-600 hover:bg-orange-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {deleteLoading ? (
+                {toggleLoading ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Đang xóa...
+                    <Loader2 size={16} className="animate-spin" /> Đang xử lý...
                   </>
                 ) : (
                   <>
-                    <Trash2 size={16} /> Xóa
+                    <Trash2 size={16} /> {criteria.isActive ? "Tắt" : "Kích hoạt"}
                   </>
                 )}
               </button>
@@ -487,13 +591,203 @@ const CriteriaDetailModal = ({
               <X size={16} /> Đóng
             </button>
             <button
-              onClick={onDelete}
-              className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white bg-red-600 hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+              onClick={onEdit}
+              className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
-              <Trash2 size={16} /> Xóa
+              <Pencil size={16} /> Chỉnh sửa
+            </button>
+            <button
+              onClick={onToggle}
+              className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white bg-orange-600 hover:bg-orange-700 transition-all flex items-center justify-center gap-2"
+            >
+              <Trash2 size={16} /> {criteria.isActive ? "Tắt" : "Kích hoạt"}
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// --- Create Criteria Modal ---
+interface CreateCriteriaModalProps {
+  onClose: () => void;
+  onSubmit: () => void;
+  loading: boolean;
+  formData: { name: string; kind: string };
+  setFormData: (data: { name: string; kind: string }) => void;
+}
+
+const CreateCriteriaModal = ({
+  onClose,
+  onSubmit,
+  loading,
+  formData,
+  setFormData,
+}: CreateCriteriaModalProps) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-white rounded-t-2xl">
+          <h2 className="text-xl font-black text-slate-800">Thêm tiêu chí mới</h2>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-50"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Tên tiêu chí <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Nhập tên tiêu chí"
+              disabled={loading}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-[13px] font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:opacity-50 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Loại <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.kind}
+              onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
+              placeholder="Nhập loại tiêu chí"
+              disabled={loading}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-[13px] font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:opacity-50 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="p-6 border-t border-slate-100 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all disabled:opacity-50"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Đang tạo...
+              </>
+            ) : (
+              <>
+                <Plus size={16} /> Thêm
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Edit Criteria Modal ---
+interface EditCriteriaModalProps {
+  onClose: () => void;
+  onSubmit: () => void;
+  loading: boolean;
+  formData: { name: string; kind: string };
+  setFormData: (data: { name: string; kind: string }) => void;
+}
+
+const EditCriteriaModal = ({
+  onClose,
+  onSubmit,
+  loading,
+  formData,
+  setFormData,
+}: EditCriteriaModalProps) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-white rounded-t-2xl">
+          <h2 className="text-xl font-black text-slate-800">Chỉnh sửa tiêu chí</h2>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-50"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Tên tiêu chí <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Nhập tên tiêu chí"
+              disabled={loading}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-[13px] font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:opacity-50 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Loại <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.kind}
+              onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
+              placeholder="Nhập loại tiêu chí"
+              disabled={loading}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-[13px] font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:opacity-50 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="p-6 border-t border-slate-100 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all disabled:opacity-50"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Đang lưu...
+              </>
+            ) : (
+              <>
+                <Pencil size={16} /> Cập nhật
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

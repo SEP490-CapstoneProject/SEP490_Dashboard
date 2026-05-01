@@ -81,7 +81,7 @@ const CommunityPostManagement = () => {
   const fetchAllPostsCount = async () => {
     try {
       const response = await fetch(
-        "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/posts?pageSize=100",
+        "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/posts?pageSize=100",
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
@@ -108,7 +108,7 @@ const CommunityPostManagement = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/admin/reports`,
+        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/reports`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
@@ -158,7 +158,7 @@ const CommunityPostManagement = () => {
     setLoading(true);
     try {
       const url = new URL(
-        "https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/admin/reports",
+        "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/reports",
       );
 
       // Thêm các tham số filter vào URL
@@ -212,7 +212,7 @@ const CommunityPostManagement = () => {
 
     try {
       const response = await fetch(
-        `https://community-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/community/admin/reports/${reportId}/review`,
+        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/reports/${reportId}/review`,
         {
           method: "POST",
           headers: {
