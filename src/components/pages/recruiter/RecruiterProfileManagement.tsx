@@ -290,7 +290,6 @@ const RecruiterProfileManagement = () => {
               {[
                 { id: "Bài đăng tuyển dụng", icon: Briefcase },
                 { id: "Cộng đồng", icon: MessageSquare },
-                { id: "Tin nhắn", icon: Mail },
               ].map((tab) => (
                 <button
                   key={tab.id}

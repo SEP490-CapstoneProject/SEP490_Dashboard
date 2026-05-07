@@ -122,7 +122,7 @@ const UserProfileManagement = () => {
   const fetchUserById = async () => {
     try {
       const response = await fetch(
-        `https://userprofile-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Employee/${userId}`,
+        `https://userprofile-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Employee/by-user/${userId}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -298,7 +298,6 @@ const UserProfileManagement = () => {
             {[
               { id: "Portfolio", icon: FolderKanban },
               { id: "Bài đăng cộng đồng", icon: MessageSquare },
-              { id: "Tin nhắn", icon: Mail },
             ].map((tab) => (
               <button
                 key={tab.id}

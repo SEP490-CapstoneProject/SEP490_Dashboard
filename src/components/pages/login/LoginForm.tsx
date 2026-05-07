@@ -74,16 +74,15 @@ export const LoginForm = () => {
         const role = response.data.user.role;
         console.log("👤 User role:", role);
 
-        notify.success("Login thành công!");
         if (role === 1 || role === 2) {
           notify.error("Bạn không có quyền truy cập vào trang này!");
-        };
+        }
         if (role === 3 || role === 4 || role === 5) {
           console.log("role: ", role);
+          notify.success("Login thành công!");
           navigate("/dashboard/statistics");
           return;
         }
-
       } else {
         // API trả về success: false hoặc format không đúng
         const errorMsg =

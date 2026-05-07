@@ -24,7 +24,7 @@ export const DashboardHeader = () => {
   const fetchUnreadCount = async () => {
     try {
       const res = await fetch(
-        "https://notification-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/notifications/unread-count",
+        "https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications/unread-count",
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const data = await res.json();
@@ -37,7 +37,7 @@ export const DashboardHeader = () => {
   const fetchNotifications = async () => {
     try {
       const res = await fetch(
-        "https://notification-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/notifications?limit=10",
+        "https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications?limit=10",
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const data = await res.json();
@@ -50,7 +50,7 @@ export const DashboardHeader = () => {
   const markAsRead = async (id: number) => {
     try {
       await fetch(
-        `https://notification-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/notifications/${id}/read`,
+        `https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications/${id}/read`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -68,7 +68,7 @@ export const DashboardHeader = () => {
   const markAllAsRead = async () => {
     try {
       await fetch(
-        "https://notification-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/notifications/read-all",
+        "https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications/read-all",
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${accessToken}` },

@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/store/hook";
 import { useNavigate } from "react-router-dom";
 import { formatTimeAgo } from "@/utils/FormatTime";
+import { CustomSelect } from "@/components/common/CustomSelect";
 
 // --- Types ---
 interface CommunityReport {
@@ -33,6 +34,17 @@ const REPORT_REASON_MAP: Record<string, string> = {
   inappropriate: "Nội dung không phù hợp",
   other: "Lý do khác",
 };
+const POST_STATUS_MAP: Record<number, { label: string; class: string }> = {
+  0: { label: "Chờ duyệt", class: "bg-amber-50 text-amber-600" },
+  1: { label: "Công khai", class: "bg-emerald-50 text-emerald-600" },
+  2: { label: "Bị ẩn", class: "bg-red-50 text-red-600" },
+};
+const STATUS_OPTIONS = [
+  { label: "Tất cả trạng thái", value: "all" },
+  { label: "Chờ duyệt", value: "0" },
+  { label: "Công khai", value: "1" },
+  { label: "Bị ẩn", value: "2" },
+];
 const CommunityPostManagement = () => {
   const { accessToken } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
@@ -49,7 +61,7 @@ const CommunityPostManagement = () => {
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
+  const [statusFilter, setStatusFilter] = useState("all");
   // Paging state (Cursor-based cho Posts, Offset-based cho Reports)
   const [currentPage, setCurrentPage] = useState(1);
   const [cursors, setCursors] = useState<{ [key: number]: any }>({ 1: null });
@@ -134,17 +146,32 @@ const CommunityPostManagement = () => {
     }
   };
   // Fetch bài đăng (Cursor-based)
-  const fetchPosts = async (page: number, search: string) => {
+  // --- API Handlers ---
+  const fetchPosts = async (page: number, _search: string) => {
     setLoading(true);
     try {
-      while (hasMore) {
-        const url = new URL(
-          "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/posts"
-        );
-        url.searchParams.append("pageSize", API_FETCH_BATCH_SIZE.toString());
-        if (nextCursor) {
-          url.searchParams.append("cursor", nextCursor.toString());
-        }
+      const url = new URL(
+        "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/posts",
+      );
+
+      url.searchParams.append("PageNumber", page.toString());
+      url.searchParams.append("PageSize", pageSize.toString());
+
+      // Thêm logic lọc theo status tại đây
+      if (statusFilter !== "all") {
+        url.searchParams.append("Status", statusFilter);
+      }
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data.items || []);
+        setHasMorePosts(data.hasMore);
       }
     } catch (error) {
       console.error("Lỗi fetch posts:", error);
@@ -197,7 +224,57 @@ const CommunityPostManagement = () => {
       setLoading(false);
     }
   };
+  // --- API Handlers ---
 
+  const handleApprovePost = async (postId: number) => {
+    if (!window.confirm("Xác nhận phê duyệt bài viết này công khai?")) return;
+
+    try {
+      const response = await fetch(
+        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/posts/${postId}/approve`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ approverNotes: "Bài viết hợp lệ" }), // Request body theo Swagger
+        },
+      );
+
+      if (response.ok) {
+        // Refresh lại danh sách sau khi thực hiện thành công
+        fetchPosts(currentPage, debouncedSearch);
+      }
+    } catch (error) {
+      console.error("Lỗi duyệt bài:", error);
+    }
+  };
+
+  const handleRejectPost = async (postId: number) => {
+    const reason = window.prompt("Nhập lý do từ chối bài viết:");
+    if (reason === null) return; // Người dùng nhấn Cancel
+
+    try {
+      const response = await fetch(
+        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/posts/${postId}/reject`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ reason: reason || "Nội dung không phù hợp" }), // Request body theo Swagger
+        },
+      );
+
+      if (response.ok) {
+        fetchPosts(currentPage, debouncedSearch);
+      }
+    } catch (error) {
+      console.error("Lỗi từ chối bài:", error);
+    }
+  };
   // Duyệt/Bác bỏ báo cáo
   const handleReviewReport = async (
     reportId: number,
@@ -247,12 +324,12 @@ const CommunityPostManagement = () => {
     fetchAllPostsCount(); // Lấy tổng số bài đăng để hiển thị ở StatCard
   }, []);
 
-  // Gọi lại API bài đăng mỗi khi trang hoặc từ khóa tìm kiếm thay đổi
+  // Sửa đổi useEffect gọi api bài đăng
   useEffect(() => {
     if (activeTab === "Bài đăng cộng đồng") {
       fetchPosts(currentPage, debouncedSearch);
     }
-  }, [currentPage, debouncedSearch, activeTab]);
+  }, [currentPage, debouncedSearch, activeTab, statusFilter]); // Thêm statusFilter vào dependency array
 
   const paginatedReports = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -261,12 +338,13 @@ const CommunityPostManagement = () => {
 
   const totalPages = useMemo(() => {
     if (activeTab === "Bài đăng cộng đồng") {
-      // Với Cursor-based, ta chỉ biết các trang đã load + trang tiếp theo nếu hasMore
-      const maxLoadedPage = Math.max(...Object.keys(cursors).map(Number));
-      return hasMorePosts ? maxLoadedPage : maxLoadedPage;
+      // Nếu API không trả về totalCount, chúng ta chỉ có thể hiển thị trang hiện tại
+      // và cho phép nhấn Next nếu hasMore = true.
+      // Giả lập: Nếu đang ở trang hiện tại và có hasMore, ít nhất có thêm 1 trang nữa.
+      return hasMorePosts ? currentPage + 1 : currentPage;
     }
     return Math.ceil(reports.length / pageSize) || 1;
-  }, [activeTab, cursors, hasMorePosts, reports.length]);
+  }, [activeTab, hasMorePosts, currentPage, reports.length]);
   const handleClearSearch = () => {
     setSearchTerm("");
     setDebouncedSearch("");
@@ -320,18 +398,34 @@ const CommunityPostManagement = () => {
             ))}
           </div>
 
-          {activeTab === "Bài đăng cộng đồng" && (
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm nội dung bài viết..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
-            </div>
-          )}
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            {activeTab === "Bài đăng cộng đồng" && (
+              <>
+                {/* Dropdown Filter Status */}
+                <CustomSelect
+                  options={STATUS_OPTIONS}
+                  value={statusFilter}
+                  onChange={(val) => {
+                    setStatusFilter(val);
+                    setCurrentPage(1); // Reset về trang 1 khi lọc
+                  }}
+                  className="w-full md:w-44"
+                />
+
+                {/* Thanh Search */}
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm nội dung bài viết..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* 3. Table Area */}
@@ -341,16 +435,20 @@ const CommunityPostManagement = () => {
               <tr className="bg-slate-50/30">
                 {activeTab === "Bài đăng cộng đồng" ? (
                   <>
-                    {["Tác giả", "Nội dung", "Ngày tạo", "Hành động"].map(
-                      (h) => (
-                        <th
-                          key={h}
-                          className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
-                        >
-                          {h}
-                        </th>
-                      ),
-                    )}
+                    {[
+                      "Tác giả",
+                      "Nội dung",
+                      "Ngày tạo",
+                      "Trạng thái",
+                      "Hành động",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </>
                 ) : (
                   <>
@@ -384,45 +482,99 @@ const CommunityPostManagement = () => {
               ) : activeTab === "Bài đăng cộng đồng" ? (
                 /* 2. Tab Bài đăng: Kiểm tra có data hay không */
                 posts.length > 0 ? (
-                  posts.map((post) => (
-                    <tr
-                      key={post.id}
-                      className="hover:bg-slate-50/50 transition-colors group"
-                    >
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={post.author.avatar}
-                            className="w-9 h-9 rounded-xl object-cover border border-slate-100"
-                          />
-                          <div className="flex flex-col text-left">
-                            <span className="text-[14px] font-bold text-slate-700">
-                              {post.author.name}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase">
-                              {post.author.role}
+                  posts.map((post) => {
+                    const statusInfo = POST_STATUS_MAP[post.status] || {
+                      label: "N/A",
+                      class: "bg-slate-50 text-slate-400",
+                    };
+
+                    return (
+                      <tr
+                        key={post.id}
+                        className="hover:bg-slate-50/50 transition-colors group"
+                      >
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={post.author.avatar}
+                              className="w-9 h-9 rounded-xl object-cover border border-slate-100"
+                              alt={post.author.name}
+                            />
+                            <div className="flex flex-col text-left">
+                              <span className="text-[14px] font-bold text-slate-700">
+                                {post.author.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">
+                                {post.author.role}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5 text-[13px] text-slate-500 max-w-md">
+                          <div className="flex flex-col gap-1">
+                            <p className="line-clamp-2">{post.description}</p>
+                            {/* Hiển thị lý do ẩn nếu có (dùng cho status 2) */}
+                            {post.status === 2 && post.reviewReason && (
+                              <span className="text-[10px] text-red-400 italic font-medium">
+                                Lý do: {post.reviewReason}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-8 py-5 text-[12px] font-bold text-slate-400">
+                          {formatTimeAgo(post.createdAt)}
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={cn(
+                                "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider",
+                                statusInfo.class,
+                              )}
+                            >
+                              {statusInfo.label}
                             </span>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 text-[13px] text-slate-500 max-w-md">
-                        <p className="line-clamp-2">{post.description}</p>
-                      </td>
-                      <td className="px-8 py-5 text-[12px] font-bold text-slate-400">
-                        {formatTimeAgo(post.createdAt)}
-                      </td>
-                      <td className="px-8 py-5">
-                        <button
-                          onClick={() =>
-                            navigate(`/dashboard/community-posts/${post.id}`)
-                          }
-                          className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
-                        >
-                          <Eye size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2">
+                            {/* Nút Xem chi tiết luôn hiển thị */}
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/dashboard/community-posts/${post.id}`,
+                                )
+                              }
+                              className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                              title="Xem chi tiết"
+                            >
+                              <Eye size={18} />
+                            </button>
+
+                            {/* Chỉ hiển thị Approve/Reject nếu bài đăng đang Chờ duyệt (status 0) */}
+                            {post.status === 0 && (
+                              <>
+                                <button
+                                  onClick={() => handleApprovePost(post.id)}
+                                  className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
+                                  title="Phê duyệt"
+                                >
+                                  <CheckCircle2 size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleRejectPost(post.id)}
+                                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                  title="Từ chối"
+                                >
+                                  <XCircle size={18} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   /* UI Empty State cho Bài đăng */
                   <EmptyState

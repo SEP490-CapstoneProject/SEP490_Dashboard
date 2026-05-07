@@ -3,8 +3,7 @@ import { LoginRequest, LoginResponse, RegisterRequest } from "@/types/auth";
 // API_BASE_URL được cấu hình từ environment:
 // - Development: /api (sử dụng Vite proxy)
 // - Production: full URL từ VITE_API_GATEWAY_BASE_URL
-const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_BASE_URL || 
-  "https://api-gateway.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
+const API_BASE_URL = "https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
 
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {

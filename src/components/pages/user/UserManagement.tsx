@@ -297,7 +297,7 @@ const UserManagement = () => {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() =>
-                            navigate(`/dashboard/users/${user.id}`)
+                            navigate(`/dashboard/users/${user.userId}`)
                           }
                           className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
                         >
