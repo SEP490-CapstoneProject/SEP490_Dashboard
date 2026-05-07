@@ -64,7 +64,7 @@ const CommunityPostManagement = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   // Paging state (Cursor-based cho Posts, Offset-based cho Reports)
   const [currentPage, setCurrentPage] = useState(1);
-  const [cursors, setCursors] = useState<{ [key: number]: any }>({ 1: null });
+  const [_cursors, setCursors] = useState<{ [key: number]: any }>({ 1: null });
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const pageSize = 5;
   // Hàm tiện ích kiểm tra ngày hôm nay (so sánh YYYY-MM-DD)
