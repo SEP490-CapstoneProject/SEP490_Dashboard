@@ -5,7 +5,8 @@ import { formatTimeAgo } from "@/utils/FormatTime";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/store/features/auth/authSlice";
-
+const BASE_URL =
+  "https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
 export const DashboardHeader = () => {
   const { accessToken, user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
@@ -20,13 +21,12 @@ export const DashboardHeader = () => {
     dispatch(logout());
     navigate("/login");
   };
-
+console.log("noti:", notifications);
   const fetchUnreadCount = async () => {
     try {
-      const res = await fetch(
-        "https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications/unread-count",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const res = await fetch(`${BASE_URL}/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       const data = await res.json();
       setUnreadCount(data.count);
     } catch (e) {
@@ -36,10 +36,9 @@ export const DashboardHeader = () => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(
-        "https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications?limit=10",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const res = await fetch(`${BASE_URL}/notifications?limit=10`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       const data = await res.json();
       setNotifications(data.items || data);
     } catch (e) {
@@ -49,16 +48,13 @@ export const DashboardHeader = () => {
 
   const markAsRead = async (id: number) => {
     try {
-      await fetch(
-        `https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications/${id}/read`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
+      await fetch(`${BASE_URL}/notifications/${id}/read`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       fetchUnreadCount();
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
       );
     } catch (e) {
       console.error("Lỗi đánh dấu đã đọc:", e);
@@ -67,13 +63,10 @@ export const DashboardHeader = () => {
 
   const markAllAsRead = async () => {
     try {
-      await fetch(
-        "https://notification-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/notifications/read-all",
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
+      await fetch(`${BASE_URL}/notifications/read-all`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       fetchUnreadCount();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (e) {
@@ -89,10 +82,8 @@ export const DashboardHeader = () => {
 
   return (
     <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-end px-8 sticky  z-10 shadow-sm shadow-slate-500/5">
-
       {/* Bên phải: Chức năng & Profile */}
       <div className="flex items-center gap-6">
-        
         {/* 1. Notification Dropdown */}
         <div className="relative">
           <button
@@ -106,7 +97,9 @@ export const DashboardHeader = () => {
               size={20}
               className={cn(
                 "transition-colors",
-                showNotiDropdown ? "text-blue-600" : "text-slate-500 group-hover:text-blue-600"
+                showNotiDropdown
+                  ? "text-blue-600"
+                  : "text-slate-500 group-hover:text-blue-600",
               )}
             />
             {unreadCount > 0 && (
@@ -119,14 +112,17 @@ export const DashboardHeader = () => {
           {showNotiDropdown && (
             <>
               {/* Overlay để đóng dropdown khi click ngoài */}
-              <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotiDropdown(false)} />
-              
+              <div
+                className="fixed inset-0 z-[-1]"
+                onClick={() => setShowNotiDropdown(false)}
+              />
+
               <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-100 shadow-2xl shadow-slate-200/50 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
                   <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider">
                     Thông báo mới
                   </span>
-                  <button 
+                  <button
                     onClick={markAllAsRead}
                     className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
                   >
@@ -140,10 +136,16 @@ export const DashboardHeader = () => {
                     notifications.map((n) => (
                       <div
                         key={n.id}
-                        onClick={() => markAsRead(n.id)}
+                        onClick={() =>
+                          markAsRead(n.id).then(() => {
+                            navigate(
+                              `/dashboard/community-posts/${n.objectId}`,
+                            );
+                          })
+                        }
                         className={cn(
                           "p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors relative",
-                          !n.isRead && "bg-blue-50/20"
+                          !n.isRead && "bg-blue-50/20",
                         )}
                       >
                         {!n.isRead && (

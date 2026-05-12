@@ -45,6 +45,12 @@ const STATUS_OPTIONS = [
   { label: "Công khai", value: "1" },
   { label: "Bị ẩn", value: "2" },
 ];
+const REPORT_STATUS_OPTIONS = [
+  { label: "Tất cả trạng thái", value: "all" },
+  { label: "Chờ duyệt", value: "Pending" },
+  { label: "Vi phạm", value: "Approved" },
+  { label: "Bác bỏ", value: "Rejected" },
+];
 const CommunityPostManagement = () => {
   const { accessToken } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
@@ -58,10 +64,13 @@ const CommunityPostManagement = () => {
   const [todayPostsCount, setTodayPostsCount] = useState(0);
   const [todayReportsCount, setTodayReportsCount] = useState(0);
 
+  const BASE_URL =
+    "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusPostFilter, setStatusPostFilter] = useState("all");
+  const [statusReportFilter, setStatusReportFilter] = useState("all");
   // Paging state (Cursor-based cho Posts, Offset-based cho Reports)
   const [currentPage, setCurrentPage] = useState(1);
   const [_cursors, setCursors] = useState<{ [key: number]: any }>({ 1: null });
@@ -92,10 +101,9 @@ const CommunityPostManagement = () => {
   // 1. Fetch và đếm Bài đăng
   const fetchAllPostsCount = async () => {
     try {
-      const response = await fetch(
-        "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/posts?pageSize=100",
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+      const response = await fetch(`${BASE_URL}/community/posts?pageSize=100`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -119,10 +127,9 @@ const CommunityPostManagement = () => {
   const fetchAllReportCount = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/reports`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+      const response = await fetch(`${BASE_URL}/community/admin/reports`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       if (response.ok) {
         const data = await response.json(); // Giả định API trả về mảng []
@@ -150,16 +157,14 @@ const CommunityPostManagement = () => {
   const fetchPosts = async (page: number, _search: string) => {
     setLoading(true);
     try {
-      const url = new URL(
-        "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/posts",
-      );
+      const url = new URL(`${BASE_URL}/community/admin/posts`);
 
       url.searchParams.append("PageNumber", page.toString());
       url.searchParams.append("PageSize", pageSize.toString());
 
       // Thêm logic lọc theo status tại đây
-      if (statusFilter !== "all") {
-        url.searchParams.append("Status", statusFilter);
+      if (statusPostFilter !== "all") {
+        url.searchParams.append("Status", statusPostFilter);
       }
 
       const response = await fetch(url.toString(), {
@@ -181,20 +186,16 @@ const CommunityPostManagement = () => {
   };
 
   // Fetch báo cáo (Admin API)
-  const fetchReports = async (page: number, statusFilter?: string) => {
+  const fetchReports = async (page: number, currentFilter: string) => {
     setLoading(true);
     try {
-      const url = new URL(
-        "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/reports",
-      );
-
-      // Thêm các tham số filter vào URL
+      const url = new URL(`${BASE_URL}/community/admin/reports`);
       url.searchParams.append("PageNumber", page.toString());
-      url.searchParams.append("PageSize", pageSize.toString()); // pageSize thường là 5 hoặc 10
+      url.searchParams.append("PageSize", pageSize.toString());
 
-      // Nếu có lọc theo status (ví dụ: 'Pending')
-      if (statusFilter) {
-        url.searchParams.append("Status", statusFilter);
+      // Chỉ append nếu filter khác "all"
+      if (currentFilter !== "all") {
+        url.searchParams.append("Status", currentFilter);
       }
 
       const response = await fetch(url.toString(), {
@@ -203,20 +204,13 @@ const CommunityPostManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
-
-        // Lưu ý: Nếu API trả về object có dạng { items: [], totalCount: ... }
-        // thì dùng data.items. Nếu trả về mảng trực tiếp thì dùng data.
+        // Kiểm tra cấu trúc trả về của API của bạn (items hoặc mảng trực tiếp)
         const reportItems = data.items || data;
-        setReports(reportItems);
+        setReports(Array.isArray(reportItems) ? reportItems : []);
+        console.log("Fetched reports:", reportItems);
 
-        // Tính toán thống kê hôm nay từ dữ liệu trả về (nếu cần)
-        const todayCount = reportItems.filter((item: any) =>
-          isToday(item.createdAt),
-        ).length;
-        setTodayReportsCount(todayCount);
-
-        // Nếu API có trả về tổng số lượng bản ghi để phân trang
-        if (data.totalCount) setReports(data.totalCount);
+        // Nếu API trả về totalCount thì cập nhật để phân trang chính xác
+        // setTotalReports(data.totalCount || reportItems.length);
       }
     } catch (error) {
       console.error("Lỗi fetch reports:", error);
@@ -231,7 +225,7 @@ const CommunityPostManagement = () => {
 
     try {
       const response = await fetch(
-        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/posts/${postId}/approve`,
+        `${BASE_URL}/community/admin/posts/${postId}/approve`,
         {
           method: "POST",
           headers: {
@@ -257,7 +251,7 @@ const CommunityPostManagement = () => {
 
     try {
       const response = await fetch(
-        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/posts/${postId}/reject`,
+        `${BASE_URL}/community/admin/posts/${postId}/reject`,
         {
           method: "POST",
           headers: {
@@ -289,7 +283,7 @@ const CommunityPostManagement = () => {
 
     try {
       const response = await fetch(
-        `https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/admin/reports/${reportId}/review`,
+        `${BASE_URL}/community/admin/reports/${reportId}/review`,
         {
           method: "POST",
           headers: {
@@ -309,7 +303,7 @@ const CommunityPostManagement = () => {
       if (response.ok) {
         // Refresh lại dữ liệu cả 2 nguồn để cập nhật Stats và List
         fetchPosts(currentPage, debouncedSearch);
-        fetchReports(currentPage);
+        fetchReports(currentPage, statusReportFilter);
       }
     } catch (error) {
       console.error("Review error:", error);
@@ -329,8 +323,12 @@ const CommunityPostManagement = () => {
     if (activeTab === "Bài đăng cộng đồng") {
       fetchPosts(currentPage, debouncedSearch);
     }
-  }, [currentPage, debouncedSearch, activeTab, statusFilter]); // Thêm statusFilter vào dependency array
-
+  }, [currentPage, debouncedSearch, activeTab, statusPostFilter]); // Thêm statusPostFilter vào dependency array
+  useEffect(() => {
+    if (activeTab === "Bị tố cáo") {
+      fetchReports(currentPage, statusReportFilter);
+    }
+  }, [currentPage, activeTab, statusReportFilter]); // Lắng nghe statusReportFilter
   const paginatedReports = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return reports.slice(start, start + pageSize);
@@ -399,21 +397,21 @@ const CommunityPostManagement = () => {
           </div>
 
           <div className="flex flex-col md:flex-row items-center gap-4">
-            {activeTab === "Bài đăng cộng đồng" && (
+            {activeTab === "Bài đăng cộng đồng" ? (
               <>
                 {/* Dropdown Filter Status */}
                 <CustomSelect
                   options={STATUS_OPTIONS}
-                  value={statusFilter}
+                  value={statusPostFilter}
                   onChange={(val) => {
-                    setStatusFilter(val);
+                    setStatusPostFilter(val);
                     setCurrentPage(1); // Reset về trang 1 khi lọc
                   }}
                   className="w-full md:w-44"
                 />
 
                 {/* Thanh Search */}
-                <div className="relative w-full md:w-72">
+                {/* <div className="relative w-full md:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input
                     type="text"
@@ -422,8 +420,18 @@ const CommunityPostManagement = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
-                </div>
+                </div> */}
               </>
+            ) : (
+              <CustomSelect
+                options={REPORT_STATUS_OPTIONS} // Dùng bộ option của Report
+                value={statusReportFilter}
+                onChange={(val) => {
+                  setStatusReportFilter(val);
+                  setCurrentPage(1); // Quan trọng: Reset về trang 1 khi lọc
+                }}
+                className="w-full md:w-44"
+              />
             )}
           </div>
         </div>

@@ -2,16 +2,28 @@ import { CommunityPost } from "@/types/community";
 import { useEffect, useState } from "react";
 import { CommunityPostCard } from "../community/CommunityPostCard";
 import { Loader2 } from "lucide-react"; // Thêm icon loading nếu muốn
+import { useAppSelector } from "@/store/hook";
 
 export const CommunityTab = ({ userId }: { userId: number }) => {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true); // 1. Khởi tạo loading = true
-
+    const { accessToken } = useAppSelector((state) => state.auth);
+  const BASE_URL = "https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
   useEffect(() => {
     const fetchUserCommunityPosts = async () => {
       setLoading(true); // Bắt đầu load
       try {
-        const response = await fetch(`https://community-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/community/posts/user/${userId}`);
+        const response = await fetch(`${BASE_URL}/community/posts/user/${userId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+
+        );
+        console.log("userid:", userId);
         if (response.ok) {
           const data = await response.json();
           setPosts(data);

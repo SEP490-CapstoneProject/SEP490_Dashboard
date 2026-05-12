@@ -3,7 +3,7 @@ import {
   Ban,
   Edit3,
   MessageSquare,
-  Mail,
+  // Mail,
   MoreVertical,
   FolderKanban,
   ArrowLeft,
@@ -323,14 +323,6 @@ const UserProfileManagement = () => {
             {activeTab === "Portfolio" && <PortfolioTab />}
             {activeTab === "Bài đăng cộng đồng" && (
               <CommunityTab userId={userProfile.userId} />
-            )}
-            {activeTab === "Tin nhắn" && (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <Mail size={40} className="mb-4 opacity-20" />
-                <p className="font-bold">
-                  Tính năng tin nhắn đang được cập nhật
-                </p>
-              </div>
             )}
           </div>
         </main>

@@ -19,7 +19,7 @@ export const CreateUserModal = ({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
+  const BASE_URL = "https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
   // 1. Thêm state loading
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,7 +33,7 @@ export const CreateUserModal = ({
 
     try {
       const response = await fetch(
-        "https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/register",
+        `${BASE_URL}/Auth/register`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

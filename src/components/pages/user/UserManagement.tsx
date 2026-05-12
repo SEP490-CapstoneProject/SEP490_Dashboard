@@ -8,7 +8,7 @@ import {
   ChevronRight,
   TrendingUp,
   Users as UsersIcon,
-  UserCheck,
+  // UserCheck,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,14 +31,6 @@ const sortOptions = [
   { label: "Sắp xếp: Cũ nhất", value: "oldest" },
 ];
 
-// Giả sử API trả về toàn bộ danh sách để client tự xử lý lọc/phân trang
-const fetchAllUsers = async (): Promise<Employee[]> => {
-  const response = await fetch(
-    "https://userprofile-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Employee",
-  );
-  return await response.json();
-};
-
 const UserManagement = () => {
   const navigate = useNavigate();
 
@@ -53,8 +45,15 @@ const UserManagement = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("newest");
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const BASE_URL = "https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
   // --- Load Data ---
+  // Giả sử API trả về toàn bộ danh sách để client tự xử lý lọc/phân trang
+  const fetchAllUsers = async (): Promise<Employee[]> => {
+    const response = await fetch(
+      "https://userprofile-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Employee",
+    );
+    return await response.json();
+  };
   const loadData = async () => {
     setLoading(true);
     try {
@@ -120,7 +119,7 @@ const UserManagement = () => {
   const handleLockUser = async (userId: number) => {
     try {
       const response = await fetch(
-        `https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/lock-user/${userId}`,
+        `${BASE_URL}/Auth/lock-user/${userId}`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -138,7 +137,7 @@ const UserManagement = () => {
   const handleUnLockUser = async (userId: number) => {
     try {
       const response = await fetch(
-        `https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/unlock-user/${userId}`,
+        `${BASE_URL}/Auth/unlock-user/${userId}`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -158,19 +157,19 @@ const UserManagement = () => {
       {/* 1. Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard
-          label="Tổng số người dùng"
+          label="Tổng số ứng viên"
           value={allUsers.length.toLocaleString()}
-          trend="+12% so với tháng trước"
+          trend={`+${allUsers.filter((u) => u.createAt?.split("T")[0] === new Date().toISOString().split("T")[0]).length} hôm nay`}
           icon={UsersIcon}
           color="blue"
         />
-        <StatCard
+        {/* <StatCard
           label="Kết quả lọc"
           value={totalItems.toLocaleString()}
           trend="Theo điều kiện hiện tại"
           icon={UserCheck}
           color="orange"
-        />
+        /> */}
       </div>
 
       {/* 2. Button Action */}
@@ -179,7 +178,7 @@ const UserManagement = () => {
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm  cursor-pointer"
           onClick={() => setIsModalOpen(true)}
         >
-          <UserPlus size={18} /> Thêm người dùng
+          <UserPlus size={18} /> Thêm ứng viên
         </button>
       </div>
 

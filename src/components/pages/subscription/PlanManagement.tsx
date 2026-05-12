@@ -4,7 +4,7 @@ import {
   Edit2,
   Trash2,
   X,
-  Check,
+  // Check,
   Settings2,
   Loader2,
   Save,
@@ -33,7 +33,7 @@ const PlanManagement: React.FC = () => {
   const [editingPlan, setEditingPlan] = useState<Partial<Plan> | null>(null);
   const [features, setFeatures] = useState<Feature[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-
+  const BASE_URL = "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
   // Quản lý Billing Cycle bằng State để đồng bộ với Select
   const [selectedBillingCycle, setSelectedBillingCycle] = useState<string>("1");
 
@@ -45,7 +45,7 @@ const PlanManagement: React.FC = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Plans",
+        `${BASE_URL}/Plans`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -67,7 +67,7 @@ const PlanManagement: React.FC = () => {
   const fetchFeatures = async (planId: number) => {
     try {
       const response = await fetch(
-        `https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/plans/${planId}/features`,
+        `${BASE_URL}/admin/plans/${planId}/features`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         },
@@ -120,7 +120,7 @@ const PlanManagement: React.FC = () => {
 
       // Promise cập nhật thông tin chung của Plan
       const updatePlanPromise = fetch(
-        `https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/plans/${editingPlan.id}`,
+        `${BASE_URL}/admin/plans/${editingPlan.id}`,
         {
           method: "PUT",
           headers: {
@@ -141,8 +141,8 @@ const PlanManagement: React.FC = () => {
       const featurePromises = features.map((f) => {
         const isNew = f.id === 0;
         const url = isNew
-          ? `https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/plans/${editingPlan.id}/features`
-          : `https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/plans/${editingPlan.id}/features/${f.id}`;
+          ? `${BASE_URL}/admin/plans/${editingPlan.id}/features`
+          : `${BASE_URL}/admin/plans/${editingPlan.id}/features/${f.id}`;
 
         const payload: any = {
           featureName: f.featureName,
@@ -182,7 +182,7 @@ const PlanManagement: React.FC = () => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa tính năng này?")) return;
     try {
       const res = await fetch(
-        `https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/plans/${planId}/features/${featureId}`,
+        `${BASE_URL}/admin/plans/${planId}/features/${featureId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -249,7 +249,7 @@ const PlanManagement: React.FC = () => {
                 <p className="text-3xl font-black text-blue-600 mb-4">
                   {plan.price.toLocaleString()} VND
                 </p>
-                <div className="pt-6 border-t border-slate-50 space-y-2">
+                {/* <div className="pt-6 border-t border-slate-50 space-y-2">
                   {plan.features?.slice(0, 4).map((f, i) => (
                     <div
                       key={i}
@@ -259,7 +259,7 @@ const PlanManagement: React.FC = () => {
                       {f.featureName}
                     </div>
                   ))}
-                </div>
+                </div> */}
               </div>
             ))}
           </div>

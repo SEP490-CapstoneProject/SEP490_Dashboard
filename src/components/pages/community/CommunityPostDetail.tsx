@@ -77,7 +77,7 @@ export default function CommunityPostDetail() {
         <div className="py-6 px-4 sm:px-6">
           <header className="flex items-center gap-4 mb-6">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/dashboard/community-posts")}
               className="p-2 hover:bg-gray-100 rounded-full cursor-pointer"
             >
               <ArrowLeft size={24} />

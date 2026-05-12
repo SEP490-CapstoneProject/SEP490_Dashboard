@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [revenueData, setRevenueData] = useState<AnalyticRevenue | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
-
+  const BASE_URL = "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
   // --- State phụ trách Khu vực Xuất Báo Cáo & Overlay ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reportType, setReportType] = useState<"month" | "year" | "">("");
@@ -81,11 +81,11 @@ const Dashboard: React.FC = () => {
       // Gọi cả 2 API cùng lúc
       const [resOverview, resRevenue] = await Promise.all([
         fetch(
-          "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/admin/analytics/overview",
+          `${BASE_URL}/admin/analytics/overview`,
           { headers },
         ),
         fetch(
-          "https://subscription-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/admin/analytics/revenue",
+          `${BASE_URL}/admin/analytics/revenue`,
           { headers },
         ),
       ]);
@@ -178,7 +178,7 @@ const Dashboard: React.FC = () => {
       params.append("PageSize", String(PAGE_SIZE));
 
       const response = await fetch(
-        `https://subscription-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/admin/subscriptions?${params.toString()}`,
+        `${BASE_URL}/admin/subscriptions?${params.toString()}`,
         {
           headers: {
             "Content-Type": "application/json",

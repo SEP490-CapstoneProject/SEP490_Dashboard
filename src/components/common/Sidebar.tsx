@@ -27,9 +27,9 @@ const NAVIGATION = [
     ],
   },
   {
-    title: "NGƯỜI DÙNG",
+    title: "ỨNG VIÊN",
     items: [
-      { icon: Users, label: "Người dùng cá nhân", path: "/dashboard/users" },
+      { icon: Users, label: "Ứng viên", path: "/dashboard/users" },
       {
         icon: Building2,
         label: "Nhà tuyển dụng",

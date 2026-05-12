@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
+const BASE_URL =
+  "https://company-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api";
 export default function JobPostDetails() {
   const navigate = useNavigate();
   // Lấy accessToken nếu cần dùng cho Header API, hiện tại fetch bên dưới chưa dùng tới
@@ -40,7 +41,7 @@ export default function JobPostDetails() {
       try {
         setIsLoading(true);
         const response = await fetch(
-          `https://company-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/company-posts/${postId}`,
+          `${BASE_URL}/company-posts/${postId}`,
           {
             // Nếu API yêu cầu token, hãy uncomment dòng dưới:
             // headers: { Authorization: `Bearer ${accessToken}` }

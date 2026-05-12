@@ -7,7 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  Briefcase,
+  // Briefcase,
   ShieldAlert,
   MapPin,
   Loader2,
@@ -29,12 +29,12 @@ const statusOptions = [
   { label: "Đã khóa", value: "Locked" },
 ];
 
-const activityOptions = [
-  { label: "Tất cả lĩnh vực", value: "All" },
-  { label: "Công nghệ thông tin", value: "IT" },
-  { label: "Tài chính", value: "Finance" },
-  { label: "Marketing", value: "Marketing" },
-];
+// const activityOptions = [
+//   { label: "Tất cả lĩnh vực", value: "All" },
+//   { label: "Công nghệ thông tin", value: "IT" },
+//   { label: "Tài chính", value: "Finance" },
+//   { label: "Marketing", value: "Marketing" },
+// ];
 
 const RecruiterManagement = () => {
   const navigate = useNavigate();
@@ -121,10 +121,10 @@ const RecruiterManagement = () => {
   const handleLockUser = async (userId: number) => {
     try {
       const response = await fetch(
-        `https://auth-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Auth/lock-user/${userId}`,
+        `https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/lock-user/${userId}`,
         {
           method: "PUT",
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: { Authorization: `Bearer ${accessToken}` },  
         },
       );
 
@@ -139,7 +139,7 @@ const RecruiterManagement = () => {
   const handleUnLockUser = async (userId: number) => {
     try {
       const response = await fetch(
-        `https://auth-service.grayforest-11aba44e.southeastasia.azurecontainerapps.io/api/Auth/unlock-user/${userId}`,
+        `https://auth-service.redmushroom-1d023c6a.southeastasia.azurecontainerapps.io/api/Auth/unlock-user/${userId}`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -168,17 +168,17 @@ const RecruiterManagement = () => {
         <StatCard
           label="Tổng nhà tuyển dụng"
           value={allRecruiters.length}
-          trend="+12.5% tháng này"
+          trend={`+${allRecruiters.filter((r) => r.createAt?.split("T")[0] === new Date().toISOString().split("T")[0]).length} hôm nay`}
           icon={Building2}
           color="blue"
         />
-        <StatCard
+        {/* <StatCard
           label="Kết quả tìm kiếm"
           value={totalItems}
           trend="Theo bộ lọc hiện tại"
           icon={Briefcase}
           color="orange"
-        />
+        /> */}
       </div>
 
       {/* 2. Action Button */}
@@ -212,11 +212,11 @@ const RecruiterManagement = () => {
             value={statusFilter}
             onChange={setStatusFilter}
           />
-          <CustomSelect
+          {/* <CustomSelect
             options={activityOptions}
             value={activityFilter}
             onChange={setActivityFilter}
-          />
+          /> */}
           <button
             onClick={() => {
               setSearchTerm("");
