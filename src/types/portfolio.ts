@@ -114,6 +114,9 @@ export interface Portfolio {
   employeeId: number;
   portfolioName: string;
   status: PortfolioStatus;
+  moderationStatus?: "PendingReview" | "Approved" | "Rejected";
+  moderationReason?: string;
+  moderatedAt?: string;
   isMain: boolean;
   isPublic: boolean;
   createdAt: string;

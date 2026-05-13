@@ -65,14 +65,38 @@ const PortfolioManagement = () => {
   };
 
   // Handle approve/reject actions (placeholder)
-  const handleApprove = () => {
-    console.log("Approved portfolio:", selectedPortfolio?.portfolioId);
-    setSelectedPortfolio(null);
+  const handleApprove = async (note: string) => {
+    if (!selectedPortfolio) return;
+    setDetailLoading(true);
+    try {
+      await portfolioAPI.approvePortfolio(selectedPortfolio.portfolioId, note);
+      console.log("✅ Approved portfolio:", selectedPortfolio.portfolioId);
+      setSelectedPortfolio(null);
+      // Reload the portfolio list
+      setCurrentPage(1);
+    } catch (error) {
+      console.error("Error approving portfolio:", error);
+      alert("Lỗi khi duyệt hồ sơ. Vui lòng thử lại.");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
-  const handleReject = () => {
-    console.log("Rejected portfolio:", selectedPortfolio?.portfolioId);
-    setSelectedPortfolio(null);
+  const handleReject = async (note: string) => {
+    if (!selectedPortfolio) return;
+    setDetailLoading(true);
+    try {
+      await portfolioAPI.rejectPortfolio(selectedPortfolio.portfolioId, note);
+      console.log("❌ Rejected portfolio:", selectedPortfolio.portfolioId);
+      setSelectedPortfolio(null);
+      // Reload the portfolio list
+      setCurrentPage(1);
+    } catch (error) {
+      console.error("Error rejecting portfolio:", error);
+      alert("Lỗi khi từ chối hồ sơ. Vui lòng thử lại.");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   // Get study field from portfolio blocks
@@ -112,7 +136,7 @@ const PortfolioManagement = () => {
       avatar: getAvatar(pf),
       studyField: getStudyField(pf),
       createdAt: formatDate(pf.createdAt),
-      status: pf.isMain ? "MAIN" : pf.isPublic ? "PUBLIC" : "PRIVATE",
+      status: pf.status === "active" ? "Đang hoạt động" : "Không hoạt động",
     }));
   };
 
@@ -120,7 +144,7 @@ const PortfolioManagement = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const res: PortfolioListResponse = await portfolioAPI.getPortfolios(
+        const res: PortfolioListResponse = await portfolioAPI.getPendingPortfolios(
           currentPage,
           pageSize,
         );
@@ -271,11 +295,9 @@ const PortfolioManagement = () => {
                       <span
                         className={cn(
                           "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter",
-                          pf.status === "MAIN"
-                            ? "bg-blue-50 text-blue-600"
-                            : pf.status === "PUBLIC"
-                              ? "bg-emerald-50 text-emerald-500"
-                              : "bg-slate-100 text-slate-500",
+                          pf.status === "Đang hoạt động"
+                            ? "bg-emerald-50 text-emerald-500"
+                            : "bg-slate-100 text-slate-500",
                         )}
                       >
                         {pf.status}
@@ -410,8 +432,8 @@ interface PortfolioDetailModalProps {
   portfolio: PortfolioType;
   loading: boolean;
   onClose: () => void;
-  onApprove: () => void;
-  onReject: () => void;
+  onApprove: (note: string) => void;
+  onReject: (note: string) => void;
 }
 
 const PortfolioDetailModal = ({
@@ -421,9 +443,38 @@ const PortfolioDetailModal = ({
   onApprove,
   onReject,
 }: PortfolioDetailModalProps) => {
+  const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Get intro block data
   const introBlock = portfolio.blocks.find((b) => b.type === "INTRO");
   const introData = introBlock?.data as any;
+
+  const handleApproveClick = async () => {
+    if (!note.trim()) {
+      alert("Vui lòng nhập ghi chú trước khi duyệt hồ sơ.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onApprove(note);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectClick = async () => {
+    if (!note.trim()) {
+      alert("Vui lòng nhập lý do từ chối trước khi từ chối hồ sơ.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onReject(note);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -523,6 +574,21 @@ const PortfolioDetailModal = ({
                   </div>
                 </div>
               )}
+
+              {/* Note Input */}
+              <div className="bg-slate-50 p-6 rounded-xl">
+                <label className="block text-sm font-black text-slate-800 mb-3">
+                  Ghi chú / Lý do
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Nhập ghi chú hoặc lý do duyệt/từ chối hồ sơ..."
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-vertical"
+                  rows={4}
+                  disabled={isSubmitting || loading}
+                />
+              </div>
             </>
           )}
         </div>
@@ -530,18 +596,18 @@ const PortfolioDetailModal = ({
         {/* Footer with Action Buttons */}
         <div className="sticky bottom-0 flex gap-3 p-6 border-t border-slate-100 bg-white">
           <button
-            onClick={onReject}
-            disabled={loading}
-            className="flex-1 px-4 py-3 border-2 border-red-300 text-red-600 font-bold rounded-lg hover:bg-red-50 transition-all disabled:opacity-50"
+            onClick={handleRejectClick}
+            disabled={isSubmitting || loading}
+            className="flex-1 px-4 py-3 border-2 border-red-300 text-red-600 font-bold rounded-lg hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Từ chối hồ sơ
+            {isSubmitting ? "Đang xử lý..." : "Từ chối hồ sơ"}
           </button>
           <button
-            onClick={onApprove}
-            disabled={loading}
-            className="flex-1 px-4 py-3 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all disabled:opacity-50"
+            onClick={handleApproveClick}
+            disabled={isSubmitting || loading}
+            className="flex-1 px-4 py-3 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Duyệt hồ sơ
+            {isSubmitting ? "Đang xử lý..." : "Duyệt hồ sơ"}
           </button>
         </div>
       </div>

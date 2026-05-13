@@ -317,6 +317,201 @@ export const portfolioAPI = {
   },
 
   /**
+   * Fetch pending portfolios for admin review
+   * @param page - Page number (default: 1)
+   * @param pageSize - Items per page (default: 10)
+   * @returns Pending portfolio list with pagination info
+   */
+  getPendingPortfolios: async (page: number = 1, pageSize: number = 10): Promise<PortfolioListResponse> => {
+    try {
+      console.log("📋 Fetching pending portfolios - Page:", page, "PageSize:", pageSize);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Pending portfolios request timeout sau 30 giây");
+        controller.abort();
+      }, 30000); // 30 second timeout
+
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/portfolio/admin/pending?${queryParams}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: PortfolioListResponse;
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Pending portfolios fetched:", {
+            total: data.total,
+            items: data.items.length,
+            page: data.page,
+            totalPages: data.totalPages,
+          });
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Pending portfolios fetch failed with status:", response.status);
+        throw new Error(`Failed to fetch pending portfolios: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Pending portfolios fetch error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Approve a portfolio by ID
+   * @param portfolioId - Portfolio ID
+   * @param note - Approval note/reason
+   * @returns Updated portfolio
+   */
+  approvePortfolio: async (portfolioId: number, note: string): Promise<Portfolio> => {
+    try {
+      console.log("✅ Approving portfolio:", portfolioId);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Approve portfolio request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/portfolio/admin/${portfolioId}/approve`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ note }),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: Portfolio;
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Portfolio approved:", {
+            portfolioId: data.portfolioId,
+            moderationStatus: data.moderationStatus,
+          });
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Portfolio approval failed with status:", response.status);
+        throw new Error(`Failed to approve portfolio: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Portfolio approval error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reject a portfolio by ID
+   * @param portfolioId - Portfolio ID
+   * @param note - Rejection reason
+   * @returns Updated portfolio
+   */
+  rejectPortfolio: async (portfolioId: number, note: string): Promise<Portfolio> => {
+    try {
+      console.log("❌ Rejecting portfolio:", portfolioId);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Reject portfolio request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/portfolio/admin/${portfolioId}/reject`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ note }),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: Portfolio;
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Portfolio rejected:", {
+            portfolioId: data.portfolioId,
+            moderationStatus: data.moderationStatus,
+          });
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Portfolio rejection failed with status:", response.status);
+        throw new Error(`Failed to reject portfolio: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Portfolio rejection error:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Fetch all criteria
    * @param accessToken - Authorization token
    * @returns Criteria list
