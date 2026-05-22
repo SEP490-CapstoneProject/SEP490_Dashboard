@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Eye,
   ChevronLeft,
   ChevronRight,
   Contact2,
   Clock,
-  AlertCircle,
   Flag,
   Filter,
   TrendingUp,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppSelector } from "@/store/hook";
 import { portfolioAPI } from "@/services/portfolio.api";
 import { Portfolio as PortfolioType, PortfolioListResponse } from "@/types/portfolio";
 
@@ -28,12 +28,15 @@ interface PortfolioDisplay {
 }
 
 const PortfolioManagement = () => {
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
   const [activeTab, setActiveTab] = useState("Tất cả");
   const [portfolios, setPortfolios] = useState<PortfolioDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [reportedCount, setReportedCount] = useState(0);
   const [selectedPortfolio, setSelectedPortfolio] = useState<PortfolioType | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const pageSize = 4;
@@ -69,7 +72,7 @@ const PortfolioManagement = () => {
     if (!selectedPortfolio) return;
     setDetailLoading(true);
     try {
-      await portfolioAPI.approvePortfolio(selectedPortfolio.portfolioId, note);
+      await portfolioAPI.approvePortfolio(selectedPortfolio.portfolioId, note, accessToken || undefined);
       console.log("✅ Approved portfolio:", selectedPortfolio.portfolioId);
       setSelectedPortfolio(null);
       // Reload the portfolio list
@@ -86,7 +89,7 @@ const PortfolioManagement = () => {
     if (!selectedPortfolio) return;
     setDetailLoading(true);
     try {
-      await portfolioAPI.rejectPortfolio(selectedPortfolio.portfolioId, note);
+      await portfolioAPI.rejectPortfolio(selectedPortfolio.portfolioId, note, accessToken || undefined);
       console.log("❌ Rejected portfolio:", selectedPortfolio.portfolioId);
       setSelectedPortfolio(null);
       // Reload the portfolio list
@@ -127,7 +130,7 @@ const PortfolioManagement = () => {
   };
 
   // Map API data to display format
-  const mapToDisplay = (apiPortfolios: PortfolioType[]): PortfolioDisplay[] => {
+  const mapToDisplay = useCallback((apiPortfolios: PortfolioType[]): PortfolioDisplay[] => {
     return apiPortfolios.map((pf) => ({
       id: `#PF-${String(pf.portfolioId).padStart(4, "0")}`,
       portfolioId: pf.portfolioId,
@@ -138,31 +141,60 @@ const PortfolioManagement = () => {
       createdAt: formatDate(pf.createdAt),
       status: pf.status === "active" ? "Đang hoạt động" : "Không hoạt động",
     }));
-  };
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const res: PortfolioListResponse = await portfolioAPI.getPendingPortfolios(
-          currentPage,
-          pageSize,
-        );
+        let res: PortfolioListResponse;
+        
+        if (activeTab === "Tất cả") {
+          res = await portfolioAPI.getPortfolios(currentPage, pageSize);
+        } else if (activeTab === "Đang chờ duyệt") {
+          res = await portfolioAPI.getPendingPortfolios(currentPage, pageSize, accessToken || undefined);
+        } else if (activeTab === "Bị tố cáo") {
+          res = await portfolioAPI.getReportedPortfolios(currentPage, pageSize, accessToken || undefined);
+        } else {
+          res = { items: [], total: 0, page: 1, pageSize, totalPages: 0 };
+        }
+
         const displayData = mapToDisplay(res.items);
         setPortfolios(displayData);
-        setTotalItems(res.total);
         setTotalPages(res.totalPages);
       } catch (error) {
         console.error("Error loading portfolios:", error);
         setPortfolios([]);
-        setTotalItems(0);
         setTotalPages(0);
       } finally {
         setLoading(false);
       }
     };
     loadData();
-  }, [currentPage]);
+  }, [currentPage, activeTab, accessToken, mapToDisplay]);
+
+  // Load pending and reported counts
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        const allRes = await portfolioAPI.getPortfolios(1, 1);
+        const pendingRes = await portfolioAPI.getPendingPortfolios(1, 1, accessToken || undefined);
+        const reportedRes = await portfolioAPI.getReportedPortfolios(1, 1, accessToken || undefined);
+        
+        setPendingCount(pendingRes.total);
+        setReportedCount(reportedRes.total);
+        
+        // Total = all + pending + reported
+        const totalAll = allRes.total + pendingRes.total + reportedRes.total;
+        setTotalItems(totalAll);
+      } catch (error) {
+        console.error("Error loading counts:", error);
+        setPendingCount(0);
+        setReportedCount(0);
+      }
+    };
+    loadCounts();
+  }, [accessToken]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -172,29 +204,21 @@ const PortfolioManagement = () => {
   return (
     <div className="flex-1 min-h-screen bg-[#f7eccd] p-4 animate-in fade-in duration-500">
       {/* 1. Header Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <StatCard
           label="Tổng số hồ sơ"
           value={totalItems.toString()}
-          
           icon={Contact2}
           color="blue"
         />
         <StatCard
           label="Hồ sơ chờ duyệt"
-          value="45"
+          value={pendingCount.toString()}
           icon={Clock}
           color="orange"
           isAlert
         />
-        <StatCard
-          label="Vi phạm"
-          value="12"
-          subValue="Cần xử lý ngay"
-          icon={AlertCircle}
-          color="red"
-        />
-        <StatCard label="Bị tố cáo" value="08" icon={Flag} color="slate" />
+        <StatCard label="Bị tố cáo" value={reportedCount.toString()} icon={Flag} color="slate" />
       </div>
 
       {/* 2. Main Content Card */}
@@ -211,7 +235,7 @@ const PortfolioManagement = () => {
 
         {/* Tab Switcher */}
         <div className="flex border-b border-slate-50 px-8 mt-4">
-          {["Tất cả"].map((tab) => (
+          {["Tất cả", "Đang chờ duyệt", "Bị tố cáo"].map((tab) => (
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}
@@ -236,7 +260,6 @@ const PortfolioManagement = () => {
             <thead>
               <tr className="bg-slate-50/30">
                 {[
-                  "PORTFOLIO ID",
                   "NGƯỜI DÙNG",
                   "LĨNH VỰC",
                   "NGÀY TẠO",
@@ -268,9 +291,6 @@ const PortfolioManagement = () => {
                     key={pf.id}
                     className="hover:bg-slate-50/50 transition-colors group"
                   >
-                    <td className="px-8 py-5 text-[13px] font-bold text-slate-400">
-                      {pf.id}
-                    </td>
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-[11px] text-slate-500 border border-slate-200 uppercase overflow-hidden">
@@ -303,16 +323,30 @@ const PortfolioManagement = () => {
                         {pf.status}
                       </span>
                     </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={() => handleViewPortfolio(pf.portfolioId)}
-                          className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
-                        >
-                          <Eye size={18} />
-                        </button>
-                      </div>
-                    </td>
+                    {activeTab === "Đang chờ duyệt" && (
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => handleViewPortfolio(pf.portfolioId)}
+                            className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                          >
+                            <Eye size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                    {activeTab !== "Đang chờ duyệt" && (
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => handleViewPortfolio(pf.portfolioId)}
+                            className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                          >
+                            <Eye size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -372,6 +406,7 @@ const PortfolioManagement = () => {
           onClose={() => setSelectedPortfolio(null)}
           onApprove={handleApprove}
           onReject={handleReject}
+          isEditMode={activeTab === "Đang chờ duyệt"}
         />
       )}
     </div>
@@ -434,6 +469,7 @@ interface PortfolioDetailModalProps {
   onClose: () => void;
   onApprove: (note: string) => void;
   onReject: (note: string) => void;
+  isEditMode?: boolean;
 }
 
 const PortfolioDetailModal = ({
@@ -442,6 +478,7 @@ const PortfolioDetailModal = ({
   onClose,
   onApprove,
   onReject,
+  isEditMode = false,
 }: PortfolioDetailModalProps) => {
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -575,40 +612,53 @@ const PortfolioDetailModal = ({
                 </div>
               )}
 
-              {/* Note Input */}
-              <div className="bg-slate-50 p-6 rounded-xl">
-                <label className="block text-sm font-black text-slate-800 mb-3">
-                  Ghi chú / Lý do
-                </label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Nhập ghi chú hoặc lý do duyệt/từ chối hồ sơ..."
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-vertical"
-                  rows={4}
-                  disabled={isSubmitting || loading}
-                />
-              </div>
+              {/* Note Input - Only shown in edit mode */}
+              {isEditMode && (
+                <div className="bg-slate-50 p-6 rounded-xl">
+                  <label className="block text-sm font-black text-slate-800 mb-3">
+                    Ghi chú / Lý do
+                  </label>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Nhập ghi chú hoặc lý do duyệt/từ chối hồ sơ..."
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-vertical"
+                    rows={4}
+                    disabled={isSubmitting || loading}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
 
         {/* Footer with Action Buttons */}
         <div className="sticky bottom-0 flex gap-3 p-6 border-t border-slate-100 bg-white">
-          <button
-            onClick={handleRejectClick}
-            disabled={isSubmitting || loading}
-            className="flex-1 px-4 py-3 border-2 border-red-300 text-red-600 font-bold rounded-lg hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Đang xử lý..." : "Từ chối hồ sơ"}
-          </button>
-          <button
-            onClick={handleApproveClick}
-            disabled={isSubmitting || loading}
-            className="flex-1 px-4 py-3 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Đang xử lý..." : "Duyệt hồ sơ"}
-          </button>
+          {isEditMode ? (
+            <>
+              <button
+                onClick={handleRejectClick}
+                disabled={isSubmitting || loading}
+                className="flex-1 px-4 py-3 border-2 border-red-300 text-red-600 font-bold rounded-lg hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Đang xử lý..." : "Từ chối hồ sơ"}
+              </button>
+              <button
+                onClick={handleApproveClick}
+                disabled={isSubmitting || loading}
+                className="flex-1 px-4 py-3 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Đang xử lý..." : "Duyệt hồ sơ"}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-3 bg-slate-200 text-slate-800 font-bold rounded-lg hover:bg-slate-300 transition-all"
+            >
+              Đóng
+            </button>
+          )}
         </div>
       </div>
     </div>

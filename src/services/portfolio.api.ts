@@ -320,9 +320,10 @@ export const portfolioAPI = {
    * Fetch pending portfolios for admin review
    * @param page - Page number (default: 1)
    * @param pageSize - Items per page (default: 10)
+   * @param accessToken - Authorization token
    * @returns Pending portfolio list with pagination info
    */
-  getPendingPortfolios: async (page: number = 1, pageSize: number = 10): Promise<PortfolioListResponse> => {
+  getPendingPortfolios: async (page: number = 1, pageSize: number = 10, accessToken?: string): Promise<PortfolioListResponse> => {
     try {
       console.log("📋 Fetching pending portfolios - Page:", page, "PageSize:", pageSize);
 
@@ -337,13 +338,19 @@ export const portfolioAPI = {
         pageSize: pageSize.toString(),
       });
 
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(
         `${PORTFOLIO_API_BASE_URL}/portfolio/admin/pending?${queryParams}`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           signal: controller.signal,
         }
       );
@@ -386,12 +393,89 @@ export const portfolioAPI = {
   },
 
   /**
+   * Fetch reported portfolios for admin review
+   * @param page - Page number (default: 1)
+   * @param pageSize - Items per page (default: 10)
+   * @param accessToken - Authorization token
+   * @returns Reported portfolio list with pagination info
+   */
+  getReportedPortfolios: async (page: number = 1, pageSize: number = 10, accessToken?: string): Promise<PortfolioListResponse> => {
+    try {
+      console.log("📋 Fetching reported portfolios - Page:", page, "PageSize:", pageSize);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("⏱️ Reported portfolios request timeout sau 30 giây");
+        controller.abort();
+      }, 30000);
+
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `${PORTFOLIO_API_BASE_URL}/portfolio/admin/reports?${queryParams}`,
+        {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      console.log("📡 Response status:", response.status);
+
+      const contentType = response.headers.get("content-type");
+      let data: PortfolioListResponse;
+
+      if (contentType?.includes("application/json")) {
+        try {
+          data = await response.json();
+          console.log("📦 Reported portfolios fetched:", {
+            total: data.total,
+            items: data.items.length,
+            page: data.page,
+            totalPages: data.totalPages,
+          });
+        } catch (parseError) {
+          console.error("❌ JSON parse error:", parseError);
+          throw new Error("Invalid response format from server (JSON parse failed)");
+        }
+      } else {
+        console.error("❌ Invalid response content type:", contentType);
+        throw new Error("Server returned non-JSON response");
+      }
+
+      if (!response.ok) {
+        console.error("❌ Reported portfolios fetch failed with status:", response.status);
+        throw new Error(`Failed to fetch reported portfolios: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Reported portfolios fetch error:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Approve a portfolio by ID
    * @param portfolioId - Portfolio ID
    * @param note - Approval note/reason
+   * @param accessToken - Authorization token
    * @returns Updated portfolio
    */
-  approvePortfolio: async (portfolioId: number, note: string): Promise<Portfolio> => {
+  approvePortfolio: async (portfolioId: number, note: string, accessToken?: string): Promise<Portfolio> => {
     try {
       console.log("✅ Approving portfolio:", portfolioId);
 
@@ -401,13 +485,19 @@ export const portfolioAPI = {
         controller.abort();
       }, 30000);
 
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(
         `${PORTFOLIO_API_BASE_URL}/portfolio/admin/${portfolioId}/approve`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({ note }),
           signal: controller.signal,
         }
@@ -452,9 +542,10 @@ export const portfolioAPI = {
    * Reject a portfolio by ID
    * @param portfolioId - Portfolio ID
    * @param note - Rejection reason
+   * @param accessToken - Authorization token
    * @returns Updated portfolio
    */
-  rejectPortfolio: async (portfolioId: number, note: string): Promise<Portfolio> => {
+  rejectPortfolio: async (portfolioId: number, note: string, accessToken?: string): Promise<Portfolio> => {
     try {
       console.log("❌ Rejecting portfolio:", portfolioId);
 
@@ -464,13 +555,19 @@ export const portfolioAPI = {
         controller.abort();
       }, 30000);
 
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(
         `${PORTFOLIO_API_BASE_URL}/portfolio/admin/${portfolioId}/reject`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({ note }),
           signal: controller.signal,
         }
