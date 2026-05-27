@@ -362,7 +362,7 @@ const CommunityPostManagement = () => {
         />
         <StatCard
           label="Đang chờ duyệt"
-          value={todayReportsCount}
+          value={reports.length}
           color="amber"
           icon={AlertCircle}
           subText={`+${todayReportsCount} tố cáo hôm nay`} // Hoặc bất kỳ nội dung nào bạn muốn

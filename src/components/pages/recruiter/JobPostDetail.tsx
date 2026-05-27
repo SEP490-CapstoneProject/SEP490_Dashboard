@@ -5,13 +5,13 @@ import {
   ArrowLeft,
   Briefcase,
   Building2,
-  Check,
+  // Check,
   CircleDollarSign,
   Clock3,
   Loader2,
   MapPin,
   Users,
-  X,
+  // X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -40,13 +40,10 @@ export default function JobPostDetails() {
       }
       try {
         setIsLoading(true);
-        const response = await fetch(
-          `${BASE_URL}/company-posts/${postId}`,
-          {
-            // Nếu API yêu cầu token, hãy uncomment dòng dưới:
-            // headers: { Authorization: `Bearer ${accessToken}` }
-          },
-        );
+        const response = await fetch(`${BASE_URL}/company-posts/${postId}`, {
+          // Nếu API yêu cầu token, hãy uncomment dòng dưới:
+          // headers: { Authorization: `Bearer ${accessToken}` }
+        });
         if (!response.ok) throw new Error("Không thể lấy dữ liệu từ server");
         const data = await response.json();
         setSelectedPost(data);
@@ -158,19 +155,17 @@ export default function JobPostDetails() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                {/* Nút Duyệt: Sử dụng màu xanh Emerald đậm */}
+              {/* <div className="flex gap-3">
                 <button className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-black text-white uppercase tracking-widest shadow-md shadow-blue-200 transition-all hover:bg-blue-700 hover:shadow-lg active:scale-95 cursor-pointer">
                   <Check size={16} strokeWidth={3} />
                   Duyệt bài đăng
                 </button>
 
-                {/* Nút Từ chối: Sử dụng màu đỏ đậm */}
                 <button className="flex items-center gap-2 rounded-xl bg-red-600 px-6 py-2.5 text-xs font-black text-white uppercase tracking-widest shadow-md shadow-red-200 transition-all hover:bg-red-700 hover:shadow-lg active:scale-95 cursor-pointer">
                   <X size={16} strokeWidth={3} />
                   Từ chối
                 </button>
-              </div>
+              </div> */}
             </div>
 
             {/* Quick Info Grid */}
