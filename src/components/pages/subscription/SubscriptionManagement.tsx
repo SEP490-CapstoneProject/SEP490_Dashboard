@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
       ]);
 
       const subData = await resSubscriptions.json();
-      const overviewData = await resOverview.json();
+      // const overviewData = await resOverview.json();
       const rawItems: Subscription[] = Array.isArray(subData)
         ? subData
         : subData.items || [];

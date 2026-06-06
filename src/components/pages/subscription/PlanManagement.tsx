@@ -10,7 +10,7 @@ import {
   Type,
   ChevronDown,
   User,
-  Building2,
+  // Building2,
 } from "lucide-react";
 import { Feature, Plan } from "@/types/subscription";
 import { useAppSelector } from "@/store/hook";

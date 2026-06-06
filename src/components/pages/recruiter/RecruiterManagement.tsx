@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Building2,
   // Briefcase,
-  ShieldAlert,
+  // ShieldAlert,
   MapPin,
   Loader2,
 } from "lucide-react";

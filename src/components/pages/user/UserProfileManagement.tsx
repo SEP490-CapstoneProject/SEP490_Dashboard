@@ -4,8 +4,8 @@ import {
   Edit3,
   MessageSquare,
   // Mail,
-  MoreVertical,
-  FolderKanban,
+  // MoreVertical,
+  // FolderKanban,
   ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
