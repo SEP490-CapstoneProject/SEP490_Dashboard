@@ -231,7 +231,7 @@ const Dashboard: React.FC = () => {
       params.append("PageNumber", "1");
       params.append("PageSize", "1000"); // Đảm bảo lấy đủ lượng data lớn của cả năm
 
-      const [resSubscriptions, resOverview] = await Promise.all([
+      const [resSubscriptions, _resOverview] = await Promise.all([
         fetch(`${BASE_URL}/admin/subscriptions?${params.toString()}`, {
           headers,
         }),
