@@ -158,13 +158,13 @@ const RecruiterManagement = () => {
     <div className="flex-1 min-h-screen bg-[#f7eccd] p-2 animate-in fade-in duration-500">
       {/* 1. Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-        <StatCard
+        {/* <StatCard
           label="Tài khoản chờ duyệt"
           value={allRecruiters.filter((r) => r.status === "Active").length}
           trend="Cần xử lý ngay"
           icon={ShieldAlert}
           color="orange"
-        />
+        /> */}
         <StatCard
           label="Tổng nhà tuyển dụng"
           value={allRecruiters.length}

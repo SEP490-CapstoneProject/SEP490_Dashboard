@@ -288,7 +288,7 @@ const PlanManagement: React.FC = () => {
             </div>
 
             {/* HÀNG 2: DÀNH CHO DOANH NGHIỆP (ROLE = "2") */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <div className="flex items-center gap-2 text-slate-800 font-black text-sm uppercase tracking-wider px-2">
                 <Building2 size={18} className="text-emerald-600" />
                 Gói dịch vụ dành cho Doanh nghiệp
@@ -297,7 +297,7 @@ const PlanManagement: React.FC = () => {
               {plans.filter((p) => String(p.allowedRole) === "2").length === 0 && (
                 <p className="text-xs text-slate-500  pl-2">Chưa có cấu hình gói dịch vụ doanh nghiệp.</p>
               )}
-            </div>
+            </div> */}
           </div>
         )}
       </div>
