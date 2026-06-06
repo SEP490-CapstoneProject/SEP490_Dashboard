@@ -4,8 +4,8 @@ import {
   Edit3,
   MessageSquare,
   // Mail,
-  MoreVertical,
-  FolderKanban,
+  // MoreVertical,
+  // FolderKanban,
   ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,79 +43,79 @@ import UpdateUserModal from "./UpdateUserModal";
 //   },
 // ];
 // --- Sub-Components: Tab Portfolio ---
-const PortfolioTab = () => {
-  const portfolios = [
-    {
-      id: 1,
-      title: "Hồ sơ xin việc",
-      role: "NHÀ THIẾT KẾ UI/UX",
-      desc: "Một nhà thiết kế sản phẩm đầy nhiệt huyết với hơn 5 năm kinh nghiệm...",
-      status: "Đang dùng",
-      statusColor: "bg-emerald-50 text-emerald-500",
-    },
-    {
-      id: 2,
-      title: "Hồ sơ xin việc",
-      role: "NHÀ THIẾT KẾ UI/UX",
-      desc: "Portfolio dự phòng cho các dự án thiết kế dạng di động...",
-      status: "Bản nháp",
-      statusColor: "bg-slate-100 text-slate-500",
-    },
-  ];
+// const PortfolioTab = () => {
+//   const portfolios = [
+//     {
+//       id: 1,
+//       title: "Hồ sơ xin việc",
+//       role: "NHÀ THIẾT KẾ UI/UX",
+//       desc: "Một nhà thiết kế sản phẩm đầy nhiệt huyết với hơn 5 năm kinh nghiệm...",
+//       status: "Đang dùng",
+//       statusColor: "bg-emerald-50 text-emerald-500",
+//     },
+//     {
+//       id: 2,
+//       title: "Hồ sơ xin việc",
+//       role: "NHÀ THIẾT KẾ UI/UX",
+//       desc: "Portfolio dự phòng cho các dự án thiết kế dạng di động...",
+//       status: "Bản nháp",
+//       statusColor: "bg-slate-100 text-slate-500",
+//     },
+//   ];
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500 cursor-pointer">
-      {portfolios.map((item) => (
-        <div
-          key={item.id}
-          className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden hover:shadow-md transition-all"
-        >
-          <div className="p-6 text-center">
-            <div className="relative inline-block mb-4">
-              <img
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
-                className="w-16 h-16 rounded-full bg-slate-100"
-                alt="avt"
-              />
-              <span
-                className={cn(
-                  "absolute top-0 -right-8 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase",
-                  item.statusColor,
-                )}
-              >
-                {item.status}
-              </span>
-            </div>
-            <button className="absolute right-6 text-slate-300">
-              <MoreVertical size={16} />
-            </button>
-            <h3 className="text-sm font-black text-slate-800 leading-none">
-              Alex Rivers
-            </h3>
-            <p className="text-[10px] font-bold text-blue-500 mt-1 ">
-              {item.role}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-3 line-clamp-2 px-4 leading-relaxed font-medium">
-              {item.desc}
-            </p>
-          </div>
-          <div className="bg-slate-50/50 py-3 text-center border-t border-slate-50 bg-slate-200">
-            <span className="text-[12px] font-bold text-slate-700">
-              {item.title}
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
+//   return (
+//     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500 cursor-pointer">
+//       {portfolios.map((item) => (
+//         <div
+//           key={item.id}
+//           className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden hover:shadow-md transition-all"
+//         >
+//           <div className="p-6 text-center">
+//             <div className="relative inline-block mb-4">
+//               <img
+//                 src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
+//                 className="w-16 h-16 rounded-full bg-slate-100"
+//                 alt="avt"
+//               />
+//               <span
+//                 className={cn(
+//                   "absolute top-0 -right-8 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase",
+//                   item.statusColor,
+//                 )}
+//               >
+//                 {item.status}
+//               </span>
+//             </div>
+//             <button className="absolute right-6 text-slate-300">
+//               <MoreVertical size={16} />
+//             </button>
+//             <h3 className="text-sm font-black text-slate-800 leading-none">
+//               Alex Rivers
+//             </h3>
+//             <p className="text-[10px] font-bold text-blue-500 mt-1 ">
+//               {item.role}
+//             </p>
+//             <p className="text-[11px] text-slate-400 mt-3 line-clamp-2 px-4 leading-relaxed font-medium">
+//               {item.desc}
+//             </p>
+//           </div>
+//           <div className="bg-slate-50/50 py-3 text-center border-t border-slate-50 bg-slate-200">
+//             <span className="text-[12px] font-bold text-slate-700">
+//               {item.title}
+//             </span>
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// };
 
 // --- Main Page Component ---
 const UserProfileManagement = () => {
   const { id } = useParams(); // Lấy ID từ URL
   const userId = Number(id);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("Portfolio");
+  const [activeTab, setActiveTab] = useState("Bài đăng cộng đồng");
   const [userProfile, setUserProfile] = useState<Employee>();
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const { accessToken } = useAppSelector((state) => state.auth);
@@ -296,7 +296,7 @@ const UserProfileManagement = () => {
           {/* Tab Bar: Luôn giữ nguyên ở đầu cột phải */}
           <div className="flex border-b border-slate-50 px-8 pt-2 shrink-0 bg-white z-10">
             {[
-              { id: "Portfolio", icon: FolderKanban },
+              // { id: "Portfolio", icon: FolderKanban },
               { id: "Bài đăng cộng đồng", icon: MessageSquare },
             ].map((tab) => (
               <button
@@ -320,7 +320,7 @@ const UserProfileManagement = () => {
 
           {/* Content Area: Chỉ cuộn riêng vùng này */}
           <div className="p-6 overflow-y-auto no-scrollbar flex-1 bg-slate-50/20">
-            {activeTab === "Portfolio" && <PortfolioTab />}
+            {/* {activeTab === "Portfolio" && <PortfolioTab />} */}
             {activeTab === "Bài đăng cộng đồng" && (
               <CommunityTab userId={userProfile.userId} />
             )}

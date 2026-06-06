@@ -207,7 +207,7 @@ const Dashboard: React.FC = () => {
     let finalStartDate = "";
     let finalEndDate = "";
 
-    // Tự động phân tách cấu trúc mốc thời gian dựa theo loại báo cáo được chọn
+    // 1. LUÔN LUÔN LẤY DATA CỦA CẢ NĂM để tránh lỗi logic filter ngày của Backend
     if (reportType === "year") {
       finalStartDate = `${selectedYear}-01-01`;
       finalEndDate = `${selectedYear}-12-31`;
@@ -216,8 +216,10 @@ const Dashboard: React.FC = () => {
         alert("Vui lòng chọn khoảng thời gian!");
         return;
       }
-      finalStartDate = exportStartDate;
-      finalEndDate = exportEndDate;
+      // Đối với báo cáo tháng, ta lấy năm từ exportStartDate để quét data cả năm đó về trước
+      const inputYear = new Date(exportStartDate).getFullYear();
+      finalStartDate = `${inputYear}-01-01`;
+      finalEndDate = `${inputYear}-12-31`;
     }
 
     try {
@@ -227,7 +229,7 @@ const Dashboard: React.FC = () => {
       params.append("StartDate", finalStartDate);
       params.append("EndDate", finalEndDate);
       params.append("PageNumber", "1");
-      params.append("PageSize", "1000");
+      params.append("PageSize", "1000"); // Đảm bảo lấy đủ lượng data lớn của cả năm
 
       const [resSubscriptions, resOverview] = await Promise.all([
         fetch(`${BASE_URL}/admin/subscriptions?${params.toString()}`, {
@@ -237,34 +239,53 @@ const Dashboard: React.FC = () => {
       ]);
 
       const subData = await resSubscriptions.json();
-      const overviewData = await resOverview.json();
+      // const overviewData = await resOverview.json();
       const rawItems: Subscription[] = Array.isArray(subData)
         ? subData
         : subData.items || [];
 
-      // CHỈ TRÍCH XUẤT các giao dịch thành công (Status: Active và PaymentStatus: Paid)
-      const dataToExport = rawItems.filter(
+      // 2. ÉP ĐỊNH DẠNG HOẶC LỌC DỮ LIỆU NGAY TẠI FRONTEND
+      let filteredItems = rawItems.filter(
         (s) => s.status === "Active" && s.paymentStatus === "Paid",
       );
 
-      if (dataToExport.length === 0) {
+      // Nếu là báo cáo THÁNG, tiến hành lọc thủ công bằng Frontend từ mảng data năm vừa kéo về
+      if (reportType === "month") {
+        // Tạo mốc thời gian so sánh chuẩn (đặt từ đầu ngày Start và đến cuối ngày End)
+        const filterStart = new Date(exportStartDate);
+        filterStart.setHours(0, 0, 0, 0);
+
+        const filterEnd = new Date(exportEndDate);
+        filterEnd.setHours(23, 59, 59, 999);
+
+        filteredItems = filteredItems.filter((item) => {
+          // Lọc dựa trên trường ngày tạo (createdAt) hoặc ngày bắt đầu (startDate) tùy thuộc hệ thống của bạn
+          // Ở đây tối ưu nhất là dùng s.createdAt hoặc s.startDate dựa theo ảnh log Swagger trước đó
+          const itemDate = new Date(item.createdAt || item.startDate);
+          return itemDate >= filterStart && itemDate <= filterEnd;
+        });
+      }
+
+      // Kiểm tra xem sau khi filter có bản ghi nào không
+      if (filteredItems.length === 0) {
         alert(
           "Không tìm thấy dữ liệu đăng ký Active & Paid nào trong kỳ báo cáo này!",
         );
         return;
       }
 
-      const totalSubscriptions = dataToExport.length;
+      const totalSubscriptions = filteredItems.length;
 
-      // // Tính toán tổng doanh thu phát sinh từ danh sách hiển thị trong kỳ chọn
-      // const totalRevenueInPeriod = dataToExport.reduce((sum, s) => {
-      //   const planPrice =
-      //     s.planName === "Premium" ? 199 : s.planName === "Pro" ? 99 : 0;
-      //   return sum + planPrice * 1000;
-      // }, 0);
+      // 3. TỰ TÍNH TỔNG DOANH THU TRONG KỲ (Dựa trên số lượng đã lọc thực tế trên màn hình)
+      const totalRevenueInPeriod = filteredItems.reduce((sum, s) => {
+        // Gói Premium: 199k, Gói Pro: 99k (Chuyển đổi linh hoạt theo hệ thống thực tế)
+        const planPrice =
+          s.planName === "Premium" ? 199 : s.planName === "Pro" ? 99 : 0;
+        return sum + planPrice * 1000;
+      }, 0);
 
       // Định cấu trúc dữ liệu hiển thị trên bảng tính chi tiết
-      const excelData = dataToExport.map((s, index) => ({
+      const excelData = filteredItems.map((s, index) => ({
         STT: index + 1,
         "Mã Đăng Ký": s.id,
         "Tên Người Dùng": s.userName || "Người dùng ẩn danh",
@@ -277,7 +298,6 @@ const Dashboard: React.FC = () => {
         "Trạng Thái Thanh Toán": "Đã thanh toán",
         "Ngày Bắt Đầu": new Date(s.startDate).toLocaleDateString("vi-VN"),
         "Ngày Kết Thúc": new Date(s.endDate).toLocaleDateString("vi-VN"),
-        "Ngày Tạo": new Date(s.createdAt).toLocaleDateString("vi-VN"),
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -291,36 +311,36 @@ const Dashboard: React.FC = () => {
         [["TỔNG ĐĂNG KÝ THÀNH CÔNG TRONG KỲ:", totalSubscriptions + " lượt"]],
         { origin: `C${emptyRowIndex + 1}` },
       );
-      // 3. NẾU LÀ BÁO CÁO NĂM: Bổ sung thêm hàng "Tổng doanh thu trong năm" (Lấy từ API Overview hệ thống)
-      if (reportType === "year") {
-        XLSX.utils.sheet_add_aoa(
-          worksheet,
-          [
-            [
-              "TỔNG DOANH THU TOÀN HỆ THỐNG:",
-              new Intl.NumberFormat("vi-VN").format(
-                (overviewData.totalRevenue || 0) * 1000,
-              ) + "đ",
-            ],
-          ],
-          { origin: `C${emptyRowIndex + 3}` },
-        );
-      }
 
-      // 4. Doanh thu định kỳ hàng tháng (Dịch chuyển dòng động dựa theo sự xuất hiện của hàng Tổng doanh thu năm)
-      const mrrRowOffset = reportType === "year" ? 4 : 3;
+      // 2. Doanh thu phát sinh thực tế trong kỳ chọn (Tháng chọn / Năm chọn)
       XLSX.utils.sheet_add_aoa(
         worksheet,
         [
           [
-            "DOANH THU ĐỊNH KỲ HÀNG THÁNG (MRR):",
-            new Intl.NumberFormat("vi-VN").format(
-              (overviewData.mrr || 0) * 1000,
-            ) + "đ",
+            reportType === "year"
+              ? "TỔNG DOANH THU TOÀN HỆ THỐNG TRONG NĂM:"
+              : "TỔNG DOANH THU TRONG KỲ BÁO CÁO:",
+            new Intl.NumberFormat("vi-VN").format(totalRevenueInPeriod) + "đ",
           ],
         ],
-        { origin: `C${emptyRowIndex + mrrRowOffset}` },
+        { origin: `C${emptyRowIndex + 3}` },
       );
+
+      // 3. Doanh thu định kỳ hàng tháng (MRR) - Chỉ bổ sung khi xem báo cáo Năm
+      // if (reportType === "year") {
+      //   XLSX.utils.sheet_add_aoa(
+      //     worksheet,
+      //     [
+      //       [
+      //         "DOANH THU ĐỊNH KỲ HÀNG THÁNG (MRR):",
+      //         new Intl.NumberFormat("vi-VN").format(
+      //           (overviewData.totalRevenue || 0) * 1000,
+      //         ) + "đ",
+      //       ],
+      //     ],
+      //     { origin: `C${emptyRowIndex + 4}` },
+      //   );
+      // }
 
       // Xử lý tự co giãn cột tối ưu kích thước giao diện
       const maxProps = Object.keys(excelData[0]);

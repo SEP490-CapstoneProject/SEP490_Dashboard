@@ -21,8 +21,8 @@ export const DashboardHeader = () => {
     dispatch(logout());
     navigate("/login");
   };
-console.log("noti:", notifications);
-  const fetchUnreadCount = async () => {  
+  console.log("noti:", notifications);
+  const fetchUnreadCount = async () => {
     try {
       const res = await fetch(`${BASE_URL}/notifications/unread-count`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -180,7 +180,7 @@ console.log("noti:", notifications);
         <div className="flex items-center gap-3 pl-2 group">
           <div className="flex flex-col items-end min-w-0">
             <p className="text-[13px] font-black text-slate-800 truncate leading-tight">
-              {user?.email || "Quản trị viên"}
+              { "Quản trị viên"}
             </p>
             <p className="text-[10px] text-slate-400 font-bold truncate italic leading-tight">
               {user?.email}
@@ -188,9 +188,9 @@ console.log("noti:", notifications);
           </div>
 
           {/* Avatar Area */}
-          <div className="w-10 h-10 rounded-xl bg-amber-100 overflow-hidden shrink-0 border-2 border-white shadow-sm transition-transform group-hover:scale-105 duration-200">
+          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-sm transition-transform group-hover:scale-105 duration-200">
             <img
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || "Admin"}`}
+              src="/product-logo.png"
               alt="avatar"
               className="w-full h-full object-cover"
             />
