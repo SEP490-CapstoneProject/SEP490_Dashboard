@@ -83,10 +83,30 @@ const Dashboard: React.FC = () => {
     try {
       const headers = { Authorization: `Bearer ${accessToken}` };
 
+      // 1. Lấy thời điểm hiện tại và tạo định dạng YYYY-MM-DD
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+
+      // Ngày đầu tiên của tháng hiện tại (Ví dụ: 2026-06-01)
+      const startDate = `${year}-${month}-01`;
+      // Ngày hiện tại (Ví dụ: 2026-06-06)
+      const endDate = `${year}-${month}-${day}`;
+
+      // 2. Gán vào URLSearchParams cho API revenue
+      const revenueParams = new URLSearchParams();
+      revenueParams.append("StartDate", startDate);
+      revenueParams.append("EndDate", endDate);
+
       // Gọi cả 2 API cùng lúc
       const [resOverview, resRevenue] = await Promise.all([
         fetch(`${BASE_URL}/admin/analytics/overview`, { headers }),
-        fetch(`${BASE_URL}/admin/analytics/revenue`, { headers }),
+        // Truyền params vào endpoint này
+        fetch(
+          `${BASE_URL}/admin/analytics/revenue?${revenueParams.toString()}`,
+          { headers },
+        ),
       ]);
 
       const dataOverview = await resOverview.json();
@@ -94,6 +114,8 @@ const Dashboard: React.FC = () => {
 
       setOverview(dataOverview);
       setRevenueData(dataRevenue);
+      console.log("Dữ liệu Overview:", dataOverview);
+      console.log("Dữ liệu Revenue:", dataRevenue);
     } catch (error) {
       console.error("Lỗi tải thống kê:", error);
     } finally {
@@ -146,9 +168,7 @@ const Dashboard: React.FC = () => {
     {
       id: "mrr",
       title: "DOANH THU THÁNG NÀY",
-      value: overview
-        ? `${new Intl.NumberFormat("vi-VN").format(overview.mrr * 1000)}đ`
-        : "---",
+      value: revenueData?.totalRevenue ? `${new Intl.NumberFormat("vi-VN").format(revenueData.totalRevenue * 1000)}đ` : "---",
       trend: "Thu nhập định kỳ",
       icon: <History size={18} />,
       color: "bg-indigo-600",
